@@ -96,6 +96,31 @@ private struct TodoItem: Identifiable, Codable, Equatable {
 private enum NoteBlockKind: String, Codable, Hashable {
     case text
     case checklist
+    case heading
+    case bullet
+    case quote
+
+    var isTextual: Bool { self != .checklist }
+
+    var displayName: String {
+        switch self {
+        case .text: return "Text"
+        case .checklist: return "To-do"
+        case .heading: return "Heading"
+        case .bullet: return "Bulleted list"
+        case .quote: return "Quote"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .text: return "text.alignleft"
+        case .checklist: return "checklist"
+        case .heading: return "textformat.size.larger"
+        case .bullet: return "list.bullet"
+        case .quote: return "text.quote"
+        }
+    }
 }
 
 private struct NoteBlock: Identifiable, Codable, Equatable {
@@ -144,12 +169,16 @@ private struct NoteBlock: Identifiable, Codable, Equatable {
         NoteBlock(kind: .checklist, todos: items)
     }
 
+    static func textual(kind: NoteBlockKind, value: String = "") -> NoteBlock {
+        NoteBlock(kind: kind, text: value)
+    }
+
     static func normalized(_ source: [NoteBlock]) -> [NoteBlock] {
         var result: [NoteBlock] = []
 
         for block in source {
             switch block.kind {
-            case .text:
+            case .text, .heading, .bullet, .quote:
                 let lines = block.text
                     .replacingOccurrences(of: "\r\n", with: "\n")
                     .replacingOccurrences(of: "\r", with: "\n")
@@ -157,7 +186,7 @@ private struct NoteBlock: Identifiable, Codable, Equatable {
                 for (index, line) in lines.enumerated() {
                     result.append(NoteBlock(
                         id: index == 0 ? block.id : UUID(),
-                        kind: .text,
+                        kind: block.kind,
                         text: line,
                         indentLevel: block.indentLevel
                     ))
@@ -305,6 +334,7 @@ private struct BlockTextField: NSViewRepresentable {
     @Binding var text: String
     @Binding var focusedBlockID: UUID?
     let blockID: UUID
+    let kind: NoteBlockKind
     let focusAtStart: Bool
     let onSubmit: (Int) -> Void
     let onMove: (Int) -> Void
@@ -321,6 +351,12 @@ private struct BlockTextField: NSViewRepresentable {
         func controlTextDidBeginEditing(_ notification: Notification) {
             parent.focusedBlockID = parent.blockID
             parent.onFocused()
+        }
+
+        func controlTextDidEndEditing(_ notification: Notification) {
+            if parent.focusedBlockID == parent.blockID {
+                parent.focusedBlockID = nil
+            }
         }
 
         func controlTextDidChange(_ notification: Notification) {
@@ -354,13 +390,35 @@ private struct BlockTextField: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
+    private var configuredFont: NSFont {
+        let size: CGFloat = kind == .heading ? 20 : 16
+        let weight: NSFont.Weight = kind == .heading ? .bold : .medium
+        let base = NSFont.systemFont(ofSize: size, weight: weight)
+        let rounded = base.fontDescriptor.withDesign(.rounded)
+            .flatMap { NSFont(descriptor: $0, size: size) } ?? base
+        guard kind == .quote else {
+            return rounded
+        }
+        let italicDescriptor = rounded.fontDescriptor.withSymbolicTraits(.italic)
+        return NSFont(descriptor: italicDescriptor, size: size) ?? rounded
+    }
+
+    private var focusedPlaceholder: String {
+        switch kind {
+        case .text: return "Type '/' for commands"
+        case .heading: return "Heading"
+        case .bullet: return "List item"
+        case .quote: return "Quote"
+        case .checklist: return ""
+        }
+    }
+
     func makeNSView(context: Context) -> NavigableBlockTextField {
         let field = NavigableBlockTextField()
         field.delegate = context.coordinator
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
-        field.placeholderString = "Type '/' for commands"
         field.isEditable = true
         field.isSelectable = true
         field.maximumNumberOfLines = 1
@@ -368,20 +426,8 @@ private struct BlockTextField: NSViewRepresentable {
         field.cell?.isScrollable = true
         field.cell?.usesSingleLineMode = true
 
-        let baseFont = NSFont.systemFont(ofSize: 16, weight: .medium)
-        if let rounded = baseFont.fontDescriptor.withDesign(.rounded),
-           let font = NSFont(descriptor: rounded, size: 16) {
-            field.font = font
-        } else {
-            field.font = baseFont
-        }
-        field.placeholderAttributedString = NSAttributedString(
-            string: "Type '/' for commands",
-            attributes: [
-                .foregroundColor: NSColor.black.withAlphaComponent(0.30),
-                .font: field.font ?? baseFont
-            ]
-        )
+        field.font = configuredFont
+        field.placeholderAttributedString = nil
         return field
     }
 
@@ -390,7 +436,17 @@ private struct BlockTextField: NSViewRepresentable {
         if field.stringValue != text {
             field.stringValue = text
         }
-        field.textColor = NSColor.black.withAlphaComponent(0.78)
+        field.font = configuredFont
+        field.textColor = NSColor.black.withAlphaComponent(kind == .quote ? 0.66 : 0.78)
+        field.placeholderAttributedString = focusedBlockID == blockID
+            ? NSAttributedString(
+                string: focusedPlaceholder,
+                attributes: [
+                    .foregroundColor: NSColor.black.withAlphaComponent(0.30),
+                    .font: configuredFont
+                ]
+            )
+            : nil
 
         if focusedBlockID == blockID, field.currentEditor() == nil {
             let shouldFocusAtStart = focusAtStart
@@ -432,6 +488,12 @@ private struct TodoTextField: NSViewRepresentable {
         func controlTextDidBeginEditing(_ notification: Notification) {
             parent.focusedItemID = parent.itemID
             parent.onFocused()
+        }
+
+        func controlTextDidEndEditing(_ notification: Notification) {
+            if parent.focusedItemID == parent.itemID {
+                parent.focusedItemID = nil
+            }
         }
 
         func controlTextDidChange(_ notification: Notification) {
@@ -482,7 +544,6 @@ private struct TodoTextField: NSViewRepresentable {
         field.isBordered = false
         field.drawsBackground = false
         field.focusRingType = .none
-        field.placeholderString = "To-do"
         field.isEditable = true
         field.isSelectable = true
         field.maximumNumberOfLines = 1
@@ -497,13 +558,7 @@ private struct TodoTextField: NSViewRepresentable {
         } else {
             field.font = baseFont
         }
-        field.placeholderAttributedString = NSAttributedString(
-            string: "To-do",
-            attributes: [
-                .foregroundColor: NSColor.black.withAlphaComponent(0.28),
-                .font: field.font ?? baseFont
-            ]
-        )
+        field.placeholderAttributedString = nil
 
         return field
     }
@@ -514,6 +569,15 @@ private struct TodoTextField: NSViewRepresentable {
             field.stringValue = text
         }
         field.textColor = NSColor.black.withAlphaComponent(isDone ? 0.46 : 0.78)
+        field.placeholderAttributedString = focusedItemID == itemID
+            ? NSAttributedString(
+                string: "To-do",
+                attributes: [
+                    .foregroundColor: NSColor.black.withAlphaComponent(0.28),
+                    .font: field.font ?? NSFont.systemFont(ofSize: 15, weight: .medium)
+                ]
+            )
+            : nil
 
         if focusedItemID == itemID, field.currentEditor() == nil {
             DispatchQueue.main.async { [weak field] in
@@ -599,6 +663,61 @@ private struct BlockDropDelegate: DropDelegate {
     func performDrop(info: DropInfo) -> Bool {
         draggedID = nil
         return true
+    }
+}
+
+private struct SlashSuggestion: Identifiable {
+    let kind: NoteBlockKind
+    let detail: String
+    let command: String
+
+    var id: NoteBlockKind { kind }
+}
+
+private struct SlashSuggestionRow: View {
+    let suggestion: SlashSuggestion
+    let isFirst: Bool
+    let action: () -> Void
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 9) {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.black.opacity(0.055))
+                    .frame(width: 27, height: 27)
+                    .overlay {
+                        Image(systemName: suggestion.kind.systemImage)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.black.opacity(0.64))
+                    }
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(suggestion.kind.displayName)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    Text(suggestion.detail)
+                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.black.opacity(0.42))
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 5)
+
+                Text(suggestion.command)
+                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Color.black.opacity(0.34))
+            }
+            .foregroundStyle(Color.black.opacity(0.76))
+            .padding(.horizontal, 7)
+            .frame(height: 35)
+            .background(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(Color.black.opacity(isHovering || isFirst ? 0.055 : 0))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
     }
 }
 
@@ -789,6 +908,10 @@ private struct StickyNoteView: View {
                 Menu {
                     Button("Text") { appendBlock(kind: .text) }
                     Button("To-do") { appendBlock(kind: .checklist) }
+                    Divider()
+                    Button("Heading") { appendBlock(kind: .heading) }
+                    Button("Bulleted list") { appendBlock(kind: .bullet) }
+                    Button("Quote") { appendBlock(kind: .quote) }
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 13, weight: .semibold))
@@ -861,12 +984,20 @@ private struct StickyNoteView: View {
     @ViewBuilder private func blockView(block: Binding<NoteBlock>) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 3) {
-                Image(systemName: "circle.grid.2x3.fill")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(Color.black.opacity(0.36))
+                VStack(spacing: 2) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        HStack(spacing: 2) {
+                            Circle().frame(width: 2.5, height: 2.5)
+                            Circle().frame(width: 2.5, height: 2.5)
+                        }
+                    }
+                }
+                    .foregroundStyle(Color.black.opacity(
+                        hoveredBlockID == block.wrappedValue.id || draggedBlockID == block.wrappedValue.id
+                            ? 0.46 : 0.24
+                    ))
                     .frame(width: 13, height: 25)
                     .contentShape(Rectangle())
-                    .opacity(hoveredBlockID == block.wrappedValue.id || draggedBlockID == block.wrappedValue.id ? 1 : 0)
                     .onDrag {
                         draggedBlockID = block.wrappedValue.id
                         return NSItemProvider(object: block.wrappedValue.id.uuidString as NSString)
@@ -874,20 +1005,33 @@ private struct StickyNoteView: View {
                     .help("Drag to reorder")
 
                 Group {
-                    if block.wrappedValue.kind == .text {
-                        BlockTextField(
-                            text: block.text,
-                            focusedBlockID: $focusedBlockID,
-                            blockID: block.wrappedValue.id,
-                            focusAtStart: focusAtStartID == block.wrappedValue.id,
-                            onSubmit: { submitTextBlock(id: block.wrappedValue.id, cursor: $0) },
-                            onMove: { moveFocus(from: block.wrappedValue.id, by: $0) },
-                            onBackspaceAtStart: { backspaceAtStart(of: block.wrappedValue.id) },
-                            onFocused: {
-                                if focusAtStartID == block.wrappedValue.id { focusAtStartID = nil }
+                    if block.wrappedValue.kind.isTextual {
+                        HStack(spacing: 7) {
+                            if block.wrappedValue.kind == .bullet {
+                                Circle()
+                                    .fill(Color.black.opacity(0.58))
+                                    .frame(width: 5, height: 5)
+                            } else if block.wrappedValue.kind == .quote {
+                                RoundedRectangle(cornerRadius: 1.5)
+                                    .fill(Color.black.opacity(0.42))
+                                    .frame(width: 3, height: 21)
                             }
-                        )
-                        .frame(height: 27)
+
+                            BlockTextField(
+                                text: block.text,
+                                focusedBlockID: $focusedBlockID,
+                                blockID: block.wrappedValue.id,
+                                kind: block.wrappedValue.kind,
+                                focusAtStart: focusAtStartID == block.wrappedValue.id,
+                                onSubmit: { submitTextBlock(id: block.wrappedValue.id, cursor: $0) },
+                                onMove: { moveFocus(from: block.wrappedValue.id, by: $0) },
+                                onBackspaceAtStart: { backspaceAtStart(of: block.wrappedValue.id) },
+                                onFocused: {
+                                    if focusAtStartID == block.wrappedValue.id { focusAtStartID = nil }
+                                }
+                            )
+                            .frame(height: block.wrappedValue.kind == .heading ? 32 : 27)
+                        }
                     } else {
                         ForEach(block.todos) { $item in
                             TodoRow(
@@ -921,6 +1065,7 @@ private struct StickyNoteView: View {
             }
 
             if block.wrappedValue.kind == .text,
+               focusedBlockID == block.wrappedValue.id,
                slashQuery(block.wrappedValue.text) != nil {
                 slashMenu(for: block.wrappedValue.id, query: slashQuery(block.wrappedValue.text) ?? "")
                     .padding(.leading, 20)
@@ -936,7 +1081,7 @@ private struct StickyNoteView: View {
             )
         )
         .contextMenu {
-            if block.wrappedValue.kind == .text {
+            if block.wrappedValue.kind.isTextual {
                 Button("Turn into to-do") { turnIntoTodo(id: block.wrappedValue.id) }
             } else {
                 Button("Turn into text") { turnIntoText(id: block.wrappedValue.id) }
@@ -949,41 +1094,31 @@ private struct StickyNoteView: View {
     }
 
     private func slashMenu(for blockID: UUID, query: String) -> some View {
-        let options: [(String, String, NoteBlockKind)] = [
-            ("text.alignleft", "Text", .text),
-            ("checklist", "To-do", .checklist)
-        ]
-        let normalizedQuery = query.lowercased().replacingOccurrences(of: "-", with: "")
-        let filtered = options.filter {
-            normalizedQuery.isEmpty || $0.1.lowercased()
-                .replacingOccurrences(of: "-", with: "")
-                .contains(normalizedQuery)
-        }
+        let filtered = filteredSlashSuggestions(query: query)
 
-        return VStack(alignment: .leading, spacing: 2) {
-            Text("BASIC BLOCKS")
-                .font(.system(size: 8, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.black.opacity(0.38))
-                .padding(.horizontal, 8)
-                .padding(.top, 6)
-
-            ForEach(Array(filtered.enumerated()), id: \.offset) { _, option in
-                Button {
-                    applySlashCommand(to: blockID, kind: option.2)
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: option.0)
-                            .frame(width: 16)
-                        Text(option.1)
-                        Spacer()
-                    }
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.black.opacity(0.72))
-                    .padding(.horizontal, 8)
-                    .frame(height: 28)
-                    .contentShape(Rectangle())
+        return VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Block suggestions")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                    Text("Choose what this line becomes")
+                        .font(.system(size: 8, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.black.opacity(0.40))
                 }
-                .buttonStyle(.plain)
+                Spacer()
+                Image(systemName: "return")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(Color.black.opacity(0.26))
+            }
+            .foregroundStyle(Color.black.opacity(0.68))
+            .padding(.horizontal, 9)
+            .padding(.top, 6)
+            .padding(.bottom, 2)
+
+            ForEach(Array(filtered.enumerated()), id: \.element.id) { index, suggestion in
+                SlashSuggestionRow(suggestion: suggestion, isFirst: index == 0) {
+                    applySlashCommand(to: blockID, kind: suggestion.kind)
+                }
             }
 
             if filtered.isEmpty {
@@ -993,13 +1128,35 @@ private struct StickyNoteView: View {
                     .padding(8)
             }
         }
-        .background(Color.white.opacity(0.72))
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .padding(4)
+        .frame(width: min(max(note.width - 86, 210), 292), alignment: .leading)
+        .background(Color(red: 0.98, green: 0.97, blue: 0.93).opacity(0.98))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.black.opacity(0.12), lineWidth: 1)
         }
-        .shadow(color: Color.black.opacity(0.10), radius: 8, y: 3)
+        .shadow(color: Color.black.opacity(0.18), radius: 14, y: 7)
+    }
+
+    private var slashSuggestions: [SlashSuggestion] {
+        [
+            SlashSuggestion(kind: .text, detail: "Plain writing", command: "/text"),
+            SlashSuggestion(kind: .checklist, detail: "Track something to finish", command: "/todo"),
+            SlashSuggestion(kind: .heading, detail: "A section title", command: "/heading"),
+            SlashSuggestion(kind: .bullet, detail: "A simple bulleted item", command: "/bullet"),
+            SlashSuggestion(kind: .quote, detail: "Emphasize a passage", command: "/quote")
+        ]
+    }
+
+    private func filteredSlashSuggestions(query: String) -> [SlashSuggestion] {
+        let normalizedQuery = query.lowercased().replacingOccurrences(of: "-", with: "")
+        return slashSuggestions.filter {
+            normalizedQuery.isEmpty || $0.kind.displayName.lowercased()
+                .replacingOccurrences(of: "-", with: "")
+                .contains(normalizedQuery)
+                || $0.command.dropFirst().contains(normalizedQuery)
+        }
     }
 
     private func slashQuery(_ value: String) -> String? {
@@ -1012,14 +1169,14 @@ private struct StickyNoteView: View {
         if kind == .checklist {
             note.blocks[index] = NoteBlock(id: blockID, kind: .checklist, todos: [TodoItem()])
         } else {
-            note.blocks[index].text = ""
+            note.blocks[index] = NoteBlock(id: blockID, kind: kind)
         }
         focusAtStartID = blockID
         focusedBlockID = blockID
     }
 
     private func appendBlock(kind: NoteBlockKind) {
-        let block = kind == .text ? NoteBlock.text() : NoteBlock.checklist()
+        let block = kind == .checklist ? NoteBlock.checklist() : NoteBlock.textual(kind: kind)
         note.blocks.append(block)
         DispatchQueue.main.async {
             focusedBlockID = block.id
@@ -1031,28 +1188,42 @@ private struct StickyNoteView: View {
         let value = note.blocks[index].text
         let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
         let loweredValue = trimmedValue.lowercased()
+        let currentKind = note.blocks[index].kind
 
-        if loweredValue == "/todo" || loweredValue == "/to-do" || loweredValue == "/checklist" {
-            note.blocks[index] = NoteBlock(id: id, kind: .checklist, todos: [TodoItem()])
-            focusedBlockID = id
+        if let query = slashQuery(value),
+           let suggestion = filteredSlashSuggestions(query: query).first {
+            applySlashCommand(to: id, kind: suggestion.kind)
             return
         }
 
-        if loweredValue == "/text" {
-            note.blocks[index].text = ""
+        let commands: [(String, NoteBlockKind)] = [
+            ("/text", .text),
+            ("/todo", .checklist),
+            ("/to-do", .checklist),
+            ("/checklist", .checklist),
+            ("/heading", .heading),
+            ("/bullet", .bullet),
+            ("/quote", .quote)
+        ]
+        for (command, kind) in commands {
+            if loweredValue == command {
+                applySlashCommand(to: id, kind: kind)
+                return
+            }
+            let prefix = command + " "
+            if loweredValue.hasPrefix(prefix) {
+                let commandText = String(trimmedValue.dropFirst(prefix.count))
+                note.blocks[index] = kind == .checklist
+                    ? NoteBlock(id: id, kind: .checklist, todos: [TodoItem(text: commandText)])
+                    : NoteBlock(id: id, kind: kind, text: commandText)
+                focusedBlockID = id
+                return
+            }
+        }
+
+        if value.isEmpty, currentKind != .text {
+            note.blocks[index] = NoteBlock(id: id, kind: .text)
             focusAtStartID = id
-            focusedBlockID = id
-            return
-        }
-
-        let commandPrefixes = ["/todo ", "/to-do ", "/checklist "]
-        if let prefix = commandPrefixes.first(where: { loweredValue.hasPrefix($0) }) {
-            let todoText = String(trimmedValue.dropFirst(prefix.count))
-            note.blocks[index] = NoteBlock(
-                id: id,
-                kind: .checklist,
-                todos: [TodoItem(text: todoText)]
-            )
             focusedBlockID = id
             return
         }
@@ -1060,7 +1231,8 @@ private struct StickyNoteView: View {
         let nsValue = value as NSString
         let splitPoint = min(max(cursor, 0), nsValue.length)
         note.blocks[index].text = nsValue.substring(to: splitPoint)
-        let next = NoteBlock.text(nsValue.substring(from: splitPoint))
+        let nextKind: NoteBlockKind = currentKind == .bullet ? .bullet : .text
+        let next = NoteBlock.textual(kind: nextKind, value: nsValue.substring(from: splitPoint))
         note.blocks.insert(next, at: index + 1)
         focusAtStartID = next.id
         focusedBlockID = next.id
@@ -1162,6 +1334,13 @@ private struct StickyNoteView: View {
     private func backspaceAtStart(of blockID: UUID) {
         guard let index = note.blocks.firstIndex(where: { $0.id == blockID }) else { return }
         let currentText = note.blocks[index].text
+
+        if note.blocks[index].kind != .text {
+            note.blocks[index].kind = .text
+            focusAtStartID = blockID
+            focusedBlockID = blockID
+            return
+        }
 
         if index > 0, note.blocks[index - 1].kind == .text, !currentText.isEmpty {
             note.blocks[index - 1].text += currentText
@@ -1326,7 +1505,7 @@ private struct DashboardNoteRow: View {
 
     private var title: String {
         for block in note.blocks {
-            if block.kind == .text {
+            if block.kind.isTextual {
                 let trimmed = block.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !trimmed.isEmpty {
                     return trimmed.split(whereSeparator: \ .isNewline).first.map(String.init) ?? trimmed
@@ -1350,7 +1529,7 @@ private struct DashboardNoteRow: View {
     private var noteIcon: String {
         let kinds = Set(note.blocks.map(\.kind))
         if kinds.count > 1 { return "square.stack.3d.up" }
-        return kinds.first == .checklist ? "checklist" : "text.alignleft"
+        return kinds.first?.systemImage ?? "text.alignleft"
     }
 
     var body: some View {

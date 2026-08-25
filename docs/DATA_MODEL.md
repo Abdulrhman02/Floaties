@@ -59,7 +59,7 @@ The root value is an array of notes. The following abbreviated example uses inve
 ## Authoritative fields
 
 - `blocks` is the authoritative note content.
-- A text block uses `kind: "text"` and its `text` field.
+- Textual blocks use their `text` field. Supported persisted kinds are `"text"`, `"heading"`, `"bullet"`, and `"quote"`.
 - A to-do block uses `kind: "checklist"` and contains exactly one entry in its `todos` array. The persisted case name remains `checklist` for compatibility.
 - `indentLevel` stores checklist nesting from `0` through `4`. Missing, negative, or oversized values decode safely and are clamped into that range.
 - Todo identifiers are globally unique within the app, which allows focus and delete actions to locate an item across blocks.
@@ -77,7 +77,7 @@ Decoding supplies defaults for fields added after the first version. If `blocks`
 After decoding, `NoteBlock.normalized` converts older grouped content into the flat editor model:
 
 - A checklist block containing multiple items becomes one checklist block per item.
-- A multiline text block becomes one text block per line.
+- A multiline textual block becomes one block of the same kind per line.
 - Identifiers and content are preserved where possible; an empty document receives one empty text block.
 - Older blocks without `indentLevel` decode at level `0`; normalization preserves indentation when it expands older grouped or multiline blocks.
 

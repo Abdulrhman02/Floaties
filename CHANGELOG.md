@@ -6,6 +6,7 @@ All notable changes to Floaties are recorded here.
 
 ### Added
 
+- Heading, bulleted-list, and quote blocks in a compact, searchable slash suggestion picker.
 - Functional slash block chooser, Notion-style to-do splitting and list exit, nested to-dos with Tab/Shift-Tab, non-interfering hover drag grips, and polished visual checklist sections.
 - Notion-style continuous block editing with inline text and to-dos, text splitting, slash conversion, cross-block navigation, and whole-block reordering.
 - Native macOS menu-bar sticky notes with floating and Space-aware pin behavior.
@@ -19,4 +20,5 @@ All notable changes to Floaties are recorded here.
 
 ### Fixed
 
+- Empty block hints now appear only on the focused line; drag grips remain subtly visible; and the slash picker uses a stable light suggestion surface in either macOS appearance.
 - Corrected light-note contrast for header menus, the bottom add control, and empty text/to-do placeholders.

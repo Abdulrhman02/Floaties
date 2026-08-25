@@ -44,13 +44,13 @@ Window movement is restricted to `WindowDragHandle`. Resizing is implemented by 
 
 ## Inline editor behavior
 
-`StickyNoteView` derives transient `BlockSection` runs from adjacent block kinds. Text runs stay visually lightweight; checklist runs receive one labeled card and item count. This grouping is presentation-only: each to-do remains its own authoritative `NoteBlock`, so focus, indentation, conversion, persistence, and cross-section drag reordering continue to operate at block granularity. Each text block uses `BlockTextField`; each to-do block contains exactly one `TodoItem` rendered through `TodoTextField`.
+`StickyNoteView` derives transient `BlockSection` runs from adjacent block kinds. Textual blocks—text, heading, bulleted list, and quote—stay visually lightweight; checklist runs receive one labeled card and item count. This grouping is presentation-only: each to-do remains its own authoritative `NoteBlock`, so focus, indentation, conversion, persistence, and cross-section drag reordering continue to operate at block granularity. Textual blocks share a style-aware `BlockTextField`; each to-do block contains exactly one `TodoItem` rendered through `TodoTextField`.
 
-Return in a text field either executes a supported slash conversion or splits the string at the UTF-16 cursor position. A leading slash also reveals an inline chooser for the supported Text and To-do block types.
+Return in a text field either executes a supported slash conversion or splits the string at the UTF-16 cursor position. A leading slash in the focused text block reveals a compact light suggestion surface. Filtering is shared with Return handling, so Return selects the visibly highlighted first match. Ending field editing clears block focus, hides the chooser, and removes the contextual placeholder from empty blocks.
 
 Return in a to-do splits the item at the UTF-16 cursor position; an empty item becomes text. Shift-Return inserts a text block after the item. Tab and Shift-Tab change the persisted `indentLevel`, constrained to four levels and requiring a preceding to-do before indentation. Both native fields intercept Up and Down to move focus across block types.
 
-Reordering starts only from the six-dot hover grip. `BlockDropDelegate` then moves the authoritative `blocks` array directly, leaving normal field selection gestures untouched.
+Reordering starts only from the always-faint six-dot grip, which increases contrast on row hover. `BlockDropDelegate` then moves the authoritative `blocks` array directly, leaving normal field selection gestures untouched.
 
 ## Deletion lifecycle
 
