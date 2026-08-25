@@ -8,12 +8,13 @@ This is the canonical maintenance guide for coding agents working in this reposi
 - Application source is in `Sources/main.swift`.
 - `build.sh` is the canonical reproducible build.
 - Generated `build/` output must not be committed.
+- Generated `dist/` release output must not be committed.
 - User notes live outside the repository in `~/Library/Application Support/Floaties/`.
 
 ## Product invariants
 
 - A note is one continuous, flat block document. Text, to-do, heading, bulleted-list, and quote blocks may appear in any order.
-- A note may have an optional persisted title fixed above its scrolling block document; the dashboard prefers it when present.
+- A note may have an optional persisted title in the window header; it remains visible when collapsed, and the dashboard prefers it when present.
 - Consecutive to-do blocks are visually grouped into a checklist section for structure; this presentation must not merge or replace the underlying movable blocks.
 - `blocks` is authoritative persisted content; legacy top-level content fields exist only for migration compatibility.
 - Closing a note moves it to Recently Deleted. Only an explicit permanent-delete action destroys it.
@@ -21,6 +22,7 @@ This is the canonical maintenance guide for coding agents working in this reposi
 - All seven header actions share the same circular chrome; menu-backed actions must not fall back to native unstyled labels.
 - The dotted header grip moves a note; the bottom-right grip resizes it; every block reveals a six-dot grip on hover that reorders without competing with text selection.
 - Empty blocks stay visually empty until focused. Only the focused empty editor may show a contextual placeholder.
+- While the slash chooser is visible, Up and Down navigate its filtered suggestions and Return applies the highlighted row; otherwise Up and Down retain cross-block navigation.
 - To-do indentation is persisted per block. New Codable block fields must remain backward compatible.
 - Note title, content, completion state, deletion state, color, pin state, collapse state, position, and size must survive relaunch.
 - Arabic and English input must remain valid Unicode throughout editing and persistence.
@@ -58,6 +60,7 @@ This is the canonical maintenance guide for coding agents working in this reposi
 | App structure, lifecycle, windows, or Spaces | `docs/ARCHITECTURE.md`, `CHANGELOG.md` when user-visible |
 | Codable fields, migrations, save, backup, or deletion | `docs/DATA_MODEL.md`, `docs/ARCHITECTURE.md`, `CHANGELOG.md` |
 | Build commands, requirements, validation, or release steps | `docs/DEVELOPMENT.md`, `README.md` when onboarding changes |
+| Installation artifacts, signing, notarization, or platform support | `docs/INSTALLATION.md`, `docs/DEVELOPMENT.md`, `README.md` when downloads change |
 | Agent workflow or project invariants | `AGENT.md`, `.codex/skills/floaties-maintainer/SKILL.md` |
 | Any notable completed work | Add a concise item under **Unreleased** in `CHANGELOG.md` |
 

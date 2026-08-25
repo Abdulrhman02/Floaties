@@ -60,7 +60,7 @@ The root value is an array of notes. The following abbreviated example uses inve
 ## Authoritative fields
 
 - `blocks` is the authoritative note content.
-- `title` is an optional user-facing note name stored as a string independently from `blocks`. An empty string means no title.
+- `title` is an optional user-facing note name stored as a string independently from `blocks`. An empty string means no title; the UI renders it in the persistent top bar so it survives collapse visually as well as in storage.
 - Textual blocks use their `text` field. Supported persisted kinds are `"text"`, `"heading"`, `"bullet"`, and `"quote"`.
 - A to-do block uses `kind: "checklist"` and contains exactly one entry in its `todos` array. The persisted case name remains `checklist` for compatibility.
 - `indentLevel` stores checklist nesting from `0` through `4`. Missing, negative, or oversized values decode safely and are clamped into that range.

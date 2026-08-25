@@ -1,6 +1,10 @@
 # Floaties
 
-Floaties is a lightweight native macOS sticky-note utility that lives in the menu bar. Notes can have optional titles, float above other apps, follow you across Desktops, mix free-text and checklist sections, and be restored after deletion.
+Floaties is a lightweight native macOS sticky-note utility that lives in the menu bar. Notes can have optional always-visible header titles, float above other apps, follow you across Desktops, mix free-text and checklist sections, and be restored after deletion.
+
+## Install
+
+Download the DMG from the [latest GitHub release](https://github.com/Abdulrhman02/Floaties/releases/latest), open it, and drag Floaties into Applications. See [Installation and platform support](docs/INSTALLATION.md) for Gatekeeper instructions, the ZIP option, checksums, and Windows status.
 
 ## Quick start
 
@@ -50,7 +54,8 @@ The app stores note data in:
 - Drag the dotted header grip to move a note.
 - Drag the bottom-right diagonal grip to resize it.
 - Drag a block's six-dot grip to reorder it.
-- Press `Return` to split text, or type `/` for the block suggestion picker.
+- Type `/` for the block suggestion picker, use `↑`/`↓` to select a result, and press `Return` to apply it.
+- Edit the optional title directly in the header; it remains visible when the note is collapsed.
 - Open the dashboard from a note, the menu-bar item, or `Command-D`.
 
 ## Project layout
@@ -59,6 +64,7 @@ The app stores note data in:
 Sources/main.swift   Native application source
 Info.plist           macOS application metadata
 build.sh             Reproducible local build
+package-macos.sh     DMG and ZIP release packaging
 docs/                Maintained project documentation
 .codex/skills/       Project-specific Codex workflows
 ```

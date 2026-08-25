@@ -4,9 +4,15 @@ All notable changes to Floaties are recorded here.
 
 ## Unreleased
 
+_No unreleased changes._
+
+## 1.1.0 - 2026-08-26
+
 ### Added
 
-- Optional persisted note titles fixed above the document and preferred in dashboard summaries.
+- Keyboard and hover selection in the slash suggestion picker, with Up/Down wrapping and Return activation.
+- Optional persisted note titles in the window header, visible while collapsed and preferred in dashboard summaries.
+- Reproducible DMG and ZIP packaging with checksum output and optional Developer ID notarization.
 - Heading, bulleted-list, and quote blocks in a compact, searchable slash suggestion picker.
 - Functional slash block chooser, Notion-style to-do splitting and list exit, nested to-dos with Tab/Shift-Tab, non-interfering hover drag grips, and polished visual checklist sections.
 - Notion-style continuous block editing with inline text and to-dos, text splitting, slash conversion, cross-block navigation, and whole-block reordering.

@@ -342,6 +342,7 @@ private struct BlockTextField: NSViewRepresentable {
     let onSubmit: (Int) -> Void
     let onMove: (Int) -> Void
     let onBackspaceAtStart: () -> Void
+    let onTextChanged: (String) -> Void
     let onFocused: () -> Void
 
     final class Coordinator: NSObject, NSTextFieldDelegate {
@@ -365,6 +366,7 @@ private struct BlockTextField: NSViewRepresentable {
         func controlTextDidChange(_ notification: Notification) {
             guard let field = notification.object as? NSTextField else { return }
             parent.text = field.stringValue
+            parent.onTextChanged(field.stringValue)
         }
 
         func control(_ control: NSControl, textView: NSTextView,
@@ -679,8 +681,9 @@ private struct SlashSuggestion: Identifiable {
 
 private struct SlashSuggestionRow: View {
     let suggestion: SlashSuggestion
-    let isFirst: Bool
+    let isSelected: Bool
     let action: () -> Void
+    let onHighlight: () -> Void
     @State private var isHovering = false
 
     var body: some View {
@@ -715,12 +718,15 @@ private struct SlashSuggestionRow: View {
             .frame(height: 35)
             .background(
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(Color.black.opacity(isHovering || isFirst ? 0.055 : 0))
+                    .fill(Color.black.opacity(isHovering || isSelected ? 0.075 : 0))
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { isHovering = $0 }
+        .onHover {
+            isHovering = $0
+            if $0 { onHighlight() }
+        }
     }
 }
 
@@ -738,6 +744,7 @@ private struct StickyNoteView: View {
     @State private var pendingDeleteID: UUID?
     @State private var draggedBlockID: UUID?
     @State private var hoveredBlockID: UUID?
+    @State private var selectedSlashIndex = 0
     let onNew: (Bool) -> Void
     let onClose: () -> Void
     let onStack: () -> Void
@@ -807,7 +814,7 @@ private struct StickyNoteView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             ZStack {
                 WindowDragHandle()
                 Image(systemName: "circle.grid.3x3.fill")
@@ -819,7 +826,23 @@ private struct StickyNoteView: View {
             .padding(.leading, 2)
             .help("Drag the note")
 
-            Spacer(minLength: 2)
+            ZStack(alignment: .leading) {
+                if note.title.isEmpty {
+                    Text("Title")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.black.opacity(0.27))
+                        .allowsHitTesting(false)
+                }
+
+                TextField("", text: $note.title)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.black.opacity(0.72))
+                    .lineLimit(1)
+                    .accessibilityLabel("Note title")
+            }
+            .frame(minWidth: 32, maxWidth: .infinity)
+            .layoutPriority(1)
 
             Button(action: onTogglePin) {
                 Image(systemName: note.isPinned ? "pin.fill" : "pin")
@@ -886,31 +909,12 @@ private struct StickyNoteView: View {
             .buttonStyle(HeaderButtonStyle())
             .help("Move to Recently Deleted")
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 7)
         .contentShape(Rectangle())
     }
 
     private var content: some View {
         VStack(spacing: 0) {
-            ZStack(alignment: .leading) {
-                if note.title.isEmpty {
-                    Text("Add a title…")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color.black.opacity(0.28))
-                        .allowsHitTesting(false)
-                }
-
-                TextField("", text: $note.title)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 19, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.black.opacity(0.78))
-                    .accessibilityLabel("Note title")
-            }
-            .padding(.leading, 24)
-            .padding(.trailing, 15)
-            .padding(.top, 11)
-            .padding(.bottom, 3)
-
             ScrollView {
                 LazyVStack(spacing: 8) {
                     ForEach(blockSections) { section in
@@ -1053,8 +1057,11 @@ private struct StickyNoteView: View {
                                 kind: block.wrappedValue.kind,
                                 focusAtStart: focusAtStartID == block.wrappedValue.id,
                                 onSubmit: { submitTextBlock(id: block.wrappedValue.id, cursor: $0) },
-                                onMove: { moveFocus(from: block.wrappedValue.id, by: $0) },
+                                onMove: { handleTextMove(from: block.wrappedValue.id, by: $0) },
                                 onBackspaceAtStart: { backspaceAtStart(of: block.wrappedValue.id) },
+                                onTextChanged: { value in
+                                    if slashQuery(value) != nil { selectedSlashIndex = 0 }
+                                },
                                 onFocused: {
                                     if focusAtStartID == block.wrappedValue.id { focusAtStartID = nil }
                                 }
@@ -1125,6 +1132,9 @@ private struct StickyNoteView: View {
 
     private func slashMenu(for blockID: UUID, query: String) -> some View {
         let filtered = filteredSlashSuggestions(query: query)
+        let selectedIndex = filtered.isEmpty
+            ? 0
+            : min(max(selectedSlashIndex, 0), filtered.count - 1)
 
         return VStack(alignment: .leading, spacing: 3) {
             HStack {
@@ -1146,9 +1156,12 @@ private struct StickyNoteView: View {
             .padding(.bottom, 2)
 
             ForEach(Array(filtered.enumerated()), id: \.element.id) { index, suggestion in
-                SlashSuggestionRow(suggestion: suggestion, isFirst: index == 0) {
-                    applySlashCommand(to: blockID, kind: suggestion.kind)
-                }
+                SlashSuggestionRow(
+                    suggestion: suggestion,
+                    isSelected: index == selectedIndex,
+                    action: { applySlashCommand(to: blockID, kind: suggestion.kind) },
+                    onHighlight: { selectedSlashIndex = index }
+                )
             }
 
             if filtered.isEmpty {
@@ -1194,6 +1207,26 @@ private struct StickyNoteView: View {
         return String(value.dropFirst())
     }
 
+    private func selectedSlashSuggestion(query: String) -> SlashSuggestion? {
+        let suggestions = filteredSlashSuggestions(query: query)
+        guard !suggestions.isEmpty else { return nil }
+        let index = min(max(selectedSlashIndex, 0), suggestions.count - 1)
+        return suggestions[index]
+    }
+
+    private func handleTextMove(from blockID: UUID, by offset: Int) {
+        if focusedBlockID == blockID,
+           let block = note.blocks.first(where: { $0.id == blockID }),
+           let query = slashQuery(block.text) {
+            let suggestions = filteredSlashSuggestions(query: query)
+            guard !suggestions.isEmpty else { return }
+            selectedSlashIndex = (selectedSlashIndex + offset + suggestions.count) % suggestions.count
+            return
+        }
+
+        moveFocus(from: blockID, by: offset)
+    }
+
     private func applySlashCommand(to blockID: UUID, kind: NoteBlockKind) {
         guard let index = note.blocks.firstIndex(where: { $0.id == blockID }) else { return }
         if kind == .checklist {
@@ -1201,6 +1234,7 @@ private struct StickyNoteView: View {
         } else {
             note.blocks[index] = NoteBlock(id: blockID, kind: kind)
         }
+        selectedSlashIndex = 0
         focusAtStartID = blockID
         focusedBlockID = blockID
     }
@@ -1221,7 +1255,7 @@ private struct StickyNoteView: View {
         let currentKind = note.blocks[index].kind
 
         if let query = slashQuery(value),
-           let suggestion = filteredSlashSuggestions(query: query).first {
+           let suggestion = selectedSlashSuggestion(query: query) {
             applySlashCommand(to: id, kind: suggestion.kind)
             return
         }

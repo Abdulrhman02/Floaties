@@ -4,7 +4,7 @@
 
 Each Floaties window is an independent sticky note. Its content behaves as one continuous, Notion-style document made from inline blocks. Text and to-dos remain freely mixable, while consecutive to-dos receive a subtle checklist section for cleaner visual structure.
 
-Each note also has an optional title fixed above the scrolling document. Leaving it empty has no effect; when present, the dashboard uses it as the note name.
+Each note also has an optional title in its top bar. It stays visible when the note is collapsed; leaving it empty has no effect, and when present the dashboard uses it as the note name.
 
 - A text block appears as a plain editable line.
 - A to-do block uses the same line layout with a checkbox.
@@ -13,7 +13,7 @@ Each note also has an optional title fixed above the scrolling document. Leaving
 - Blocks can be mixed and reordered in any sequence.
 - Hover a block to reveal its six-dot grip, then drag the grip to reorder the block. The reserved gutter prevents layout movement, while the separate grip keeps text selection working normally.
 
-Press `Return` in text to split the current block at the cursor. Type `/` at the start of a focused text block to open a compact suggestion picker for **Text**, **To-do**, **Heading**, **Bulleted list**, and **Quote**. Click a suggestion or press `Return` to choose the highlighted first result. The typed shortcuts `/text`, `/todo`, `/heading`, `/bullet`, and `/quote` also work directly. The small `+` menu at the bottom offers the same block types.
+Press `Return` in text to split the current block at the cursor. Type `/` at the start of a focused text block to open a compact suggestion picker for **Text**, **To-do**, **Heading**, **Bulleted list**, and **Quote**. Keep typing to filter it, use `↑` and `↓` to move the highlight, and press `Return` to apply the selected result. The highlight wraps at the first and last result and also follows the hovered row. The typed shortcuts `/text`, `/todo`, `/heading`, `/bullet`, and `/quote` work directly. The small `+` menu at the bottom offers the same block types.
 
 Empty lines have no repeated default label. The contextual placeholder appears only while its empty field is focused and disappears when focus moves elsewhere.
 
@@ -34,6 +34,8 @@ Right-click a block to convert its type or delete it. Backspace at the beginning
 ## Window controls
 
 The dotted grip in the header is the only region that moves the window. This prevents block reordering from accidentally moving the entire note.
+
+The optional title field shares the header with the controls. It uses the available center space and remains editable and visible in the collapsed bar.
 
 | Control | Behavior |
 | --- | --- |

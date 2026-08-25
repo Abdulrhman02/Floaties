@@ -63,3 +63,21 @@ Application versions live in `Info.plist`:
 - `CFBundleVersion` is the monotonically increasing build number.
 
 Before a release, update those values, move relevant entries from **Unreleased** in `CHANGELOG.md` into a dated version section, rebuild, and verify the packaged application.
+
+Create the distributable macOS artifacts with:
+
+```sh
+./package-macos.sh
+```
+
+The script rebuilds and signs the app, creates a drag-to-Applications DMG and a ZIP, and writes SHA-256 checksums under ignored `dist/`. It defaults to ad-hoc signing. To use a Developer ID identity and notarize the DMG, supply:
+
+```sh
+FLOATIES_SIGN_IDENTITY="Developer ID Application: Example (TEAMID)" \
+FLOATIES_NOTARY_PROFILE="floaties-notary" \
+./package-macos.sh
+```
+
+Validate the generated files with `hdiutil verify dist/Floaties-<version>-macOS.dmg`, `unzip -t dist/Floaties-<version>-macOS.zip`, and—while inside `dist/`—`shasum -a 256 -c SHA256SUMS.txt`. Publish the DMG, ZIP, and checksum file together.
+
+This source target is macOS-only. AppKit, `NSPanel`, macOS Spaces, and AppKit field-editor behavior cannot be converted into a functional Windows installer by packaging. Follow [Installation and platform support](INSTALLATION.md) before adding a Windows release: a native Windows UI/windowing port and parity testing are required.
