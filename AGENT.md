@@ -17,7 +17,7 @@ This is the canonical maintenance guide for coding agents working in this reposi
 - `blocks` is authoritative persisted content; legacy top-level content fields exist only for migration compatibility.
 - Closing a note moves it to Recently Deleted. Only an explicit permanent-delete action destroys it.
 - Pinned means floating across Desktops/Spaces. Unpinned means normal layering on the current Desktop.
-- The dotted header grip moves a note; the bottom-right grip resizes it; every block has a faint six-dot grip that strengthens on hover and reorders without competing with text selection.
+- The dotted header grip moves a note; the bottom-right grip resizes it; every block reveals a six-dot grip on hover that reorders without competing with text selection.
 - Empty blocks stay visually empty until focused. Only the focused empty editor may show a contextual placeholder.
 - To-do indentation is persisted per block. New Codable block fields must remain backward compatible.
 - Note content, completion state, deletion state, color, pin state, collapse state, position, and size must survive relaunch.

@@ -50,7 +50,7 @@ Return in a text field either executes a supported slash conversion or splits th
 
 Return in a to-do splits the item at the UTF-16 cursor position; an empty item becomes text. Shift-Return inserts a text block after the item. Tab and Shift-Tab change the persisted `indentLevel`, constrained to four levels and requiring a preceding to-do before indentation. Both native fields intercept Up and Down to move focus across block types.
 
-Reordering starts only from the always-faint six-dot grip, which increases contrast on row hover. `BlockDropDelegate` then moves the authoritative `blocks` array directly, leaving normal field selection gestures untouched.
+Reordering starts only from the six-dot grip, which occupies a stable gutter but remains transparent until its row is hovered. `BlockDropDelegate` then moves the authoritative `blocks` array directly, leaving normal field selection gestures untouched.
 
 ## Deletion lifecycle
 

@@ -9,7 +9,7 @@ Each Floaties window is an independent sticky note. Its content behaves as one c
 - Heading, bulleted-list, and quote blocks provide structure without creating separate note sections.
 - Adjacent to-dos share a labeled checklist card with an item count and an **Add item** control; text breaks the card and resumes the document flow.
 - Blocks can be mixed and reordered in any sequence.
-- Each block shows a faint six-dot grip; it strengthens on hover and can be dragged to reorder the block. The separate grip keeps clicking and dragging inside text available for selection.
+- Hover a block to reveal its six-dot grip, then drag the grip to reorder the block. The reserved gutter prevents layout movement, while the separate grip keeps text selection working normally.
 
 Press `Return` in text to split the current block at the cursor. Type `/` at the start of a focused text block to open a compact suggestion picker for **Text**, **To-do**, **Heading**, **Bulleted list**, and **Quote**. Click a suggestion or press `Return` to choose the highlighted first result. The typed shortcuts `/text`, `/todo`, `/heading`, `/bullet`, and `/quote` also work directly. The small `+` menu at the bottom offers the same block types.
 
@@ -20,7 +20,7 @@ Right-click a block to convert its type or delete it. Backspace at the beginning
 ## Checklist controls
 
 - Click the circle to check or uncheck an item.
-- Drag the visible six-dot grip to reorder a to-do anywhere in the note.
+- Hover a to-do and drag the revealed six-dot grip to reorder it anywhere in the note.
 - Press `↑` or `↓` while editing to focus the previous or next block, including text.
 - Press `Return` to split a to-do at the cursor and continue in a new to-do.
 - Press `Return` on an empty to-do to turn it into normal text and leave the checklist.

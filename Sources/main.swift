@@ -992,12 +992,14 @@ private struct StickyNoteView: View {
                         }
                     }
                 }
-                    .foregroundStyle(Color.black.opacity(
-                        hoveredBlockID == block.wrappedValue.id || draggedBlockID == block.wrappedValue.id
-                            ? 0.46 : 0.24
-                    ))
+                    .foregroundStyle(Color.black.opacity(0.46))
                     .frame(width: 13, height: 25)
                     .contentShape(Rectangle())
+                    .opacity(
+                        hoveredBlockID == block.wrappedValue.id || draggedBlockID == block.wrappedValue.id
+                            ? 1 : 0
+                    )
+                    .animation(.easeOut(duration: 0.12), value: hoveredBlockID)
                     .onDrag {
                         draggedBlockID = block.wrappedValue.id
                         return NSItemProvider(object: block.wrappedValue.id.uuidString as NSString)
@@ -1056,13 +1058,6 @@ private struct StickyNoteView: View {
             }
             .padding(.horizontal, 2)
             .contentShape(Rectangle())
-            .onHover { isHovering in
-                if isHovering {
-                    hoveredBlockID = block.wrappedValue.id
-                } else if hoveredBlockID == block.wrappedValue.id {
-                    hoveredBlockID = nil
-                }
-            }
 
             if block.wrappedValue.kind == .text,
                focusedBlockID == block.wrappedValue.id,
@@ -1089,6 +1084,14 @@ private struct StickyNoteView: View {
             Divider()
             Button("Delete block", role: .destructive) {
                 deleteBlock(id: block.wrappedValue.id)
+            }
+        }
+        .contentShape(Rectangle())
+        .onHover { isHovering in
+            if isHovering {
+                hoveredBlockID = block.wrappedValue.id
+            } else if hoveredBlockID == block.wrappedValue.id {
+                hoveredBlockID = nil
             }
         }
     }

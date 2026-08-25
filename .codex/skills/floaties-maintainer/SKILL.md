@@ -20,7 +20,7 @@ Read `AGENT.md` before acting. It contains the product invariants, data-safety r
 - Keep deletion recoverable until the user explicitly chooses permanent deletion.
 - Keep real note content out of test output and fixtures.
 - Preserve the flat Notion-style block model: text, one-item to-do, heading, bulleted-list, and quote blocks; persisted indentation; and a focus-bound slash chooser. Consecutive to-dos receive one visual checklist section without changing the persisted block structure.
-- Preserve the gesture split: header grip moves the window, bottom-right grip resizes it, and each block's faint six-dot grip strengthens on hover and reorders without intercepting text selection.
+- Preserve the gesture split: header grip moves the window, bottom-right grip resizes it, and each block reveals its six-dot reorder grip only on hover without intercepting text selection.
 - Keep instructional placeholders contextual: empty unfocused blocks must remain visually empty.
 - Keep pinned and unpinned Space behavior distinct.
 

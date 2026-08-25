@@ -20,5 +20,6 @@ All notable changes to Floaties are recorded here.
 
 ### Fixed
 
+- Block reorder grips now stay hidden until their row is hovered, keeping the note visually quiet without shifting content.
 - Empty block hints now appear only on the focused line; drag grips remain subtly visible; and the slash picker uses a stable light suggestion surface in either macOS appearance.
 - Corrected light-note contrast for header menus, the bottom add control, and empty text/to-do placeholders.

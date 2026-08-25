@@ -13,7 +13,7 @@ open build/Floaties.app
 
 - Native always-on-top macOS note windows
 - Notion-style text, to-do, heading, bulleted-list, and quote blocks in one note
-- Compact slash suggestion picker and visible drag grips
+- Compact slash suggestion picker and hover-only drag grips
 - Keyboard navigation and task completion controls
 - Pin across Desktops or unpin to the current Desktop
 - Multiple colors, stacking, collapsing, and resizing
