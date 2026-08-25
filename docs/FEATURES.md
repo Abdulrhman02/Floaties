@@ -2,20 +2,22 @@
 
 ## Notes
 
-Each Floaties window is an independent sticky note. A note can contain any number of content sections in any order:
+Each Floaties window is an independent sticky note. Its content behaves as one continuous, Notion-style document made from inline blocks. Text and to-dos are peers rather than separate cards or sections.
 
-- Free-text section
-- Checklist section
-- Another free-text section
-- Another checklist section
+- A text block appears as a plain editable line.
+- A to-do block uses the same line layout with a checkbox.
+- Blocks can be mixed and reordered in any sequence.
+- Press and drag anywhere on a block to reorder it.
 
-Use **Text** or **Checklist** at the bottom of a note to append a section. A section's `…` menu removes that section when the note contains more than one.
+Press `Return` in text to split the current block at the cursor. Type `/todo`, `/to-do`, or `/checklist` and press `Return` to turn a text block into a to-do. The small `+` menu at the bottom can append either type without a command.
+
+Right-click a block to convert its type or delete it. Backspace at the beginning of a text block merges it into the previous text block; Backspace on an empty text block removes it.
 
 ## Checklist controls
 
 - Click the circle to check or uncheck an item.
-- Press and drag a checklist row to reorder it within its section.
-- Press `↑` or `↓` while editing to focus the previous or next item.
+- Press and drag a to-do block to reorder it anywhere in the note.
+- Press `↑` or `↓` while editing to focus the previous or next block, including text.
 - Press `Return` with the cursor at the end of the text to create the next item.
 - Press `Return` with the cursor before the end to check or uncheck the current item.
 - Backspace and Forward Delete remove characters normally. When an item is already empty, deletion opens a confirmation dialog.
@@ -23,7 +25,7 @@ Use **Text** or **Checklist** at the bottom of a note to append a section. A sec
 
 ## Window controls
 
-The dotted grip in the header is the only region that moves the window. This prevents task reordering from accidentally moving the entire note.
+The dotted grip in the header is the only region that moves the window. This prevents block reordering from accidentally moving the entire note.
 
 | Control | Behavior |
 | --- | --- |

@@ -19,7 +19,8 @@ Read `AGENT.md` before acting. It contains the product invariants, data-safety r
 - Treat `blocks` as authoritative content and keep older saves decodable.
 - Keep deletion recoverable until the user explicitly chooses permanent deletion.
 - Keep real note content out of test output and fixtures.
-- Preserve the gesture split: header grip moves the window, bottom-right grip resizes it, and checklist rows reorder.
+- Preserve the flat Notion-style block model: no text/checklist section cards, one to-do per block, and slash conversion from text.
+- Preserve the gesture split: header grip moves the window, bottom-right grip resizes it, and content blocks reorder.
 - Keep pinned and unpinned Space behavior distinct.
 
 ## Finish the whole change

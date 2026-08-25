@@ -111,6 +111,38 @@ private struct NoteBlock: Identifiable, Codable, Equatable {
     static func checklist(_ items: [TodoItem] = [TodoItem()]) -> NoteBlock {
         NoteBlock(kind: .checklist, todos: items)
     }
+
+    static func normalized(_ source: [NoteBlock]) -> [NoteBlock] {
+        var result: [NoteBlock] = []
+
+        for block in source {
+            switch block.kind {
+            case .text:
+                let lines = block.text
+                    .replacingOccurrences(of: "\r\n", with: "\n")
+                    .replacingOccurrences(of: "\r", with: "\n")
+                    .components(separatedBy: "\n")
+                for (index, line) in lines.enumerated() {
+                    result.append(NoteBlock(
+                        id: index == 0 ? block.id : UUID(),
+                        kind: .text,
+                        text: line
+                    ))
+                }
+            case .checklist:
+                let items = block.todos.isEmpty ? [TodoItem()] : block.todos
+                for (index, item) in items.enumerated() {
+                    result.append(NoteBlock(
+                        id: index == 0 ? block.id : item.id,
+                        kind: .checklist,
+                        todos: [item]
+                    ))
+                }
+            }
+        }
+
+        return result.isEmpty ? [.text()] : result
+    }
 }
 
 private final class StickyNote: ObservableObject, Codable, Identifiable {
@@ -141,7 +173,9 @@ private final class StickyNote: ObservableObject, Codable, Identifiable {
         self.text = text
         self.todos = todos
         self.isChecklist = isChecklist
-        self.blocks = blocks ?? (isChecklist ? [.checklist(todos)] : [.text(text)])
+        self.blocks = NoteBlock.normalized(
+            blocks ?? (isChecklist ? [.checklist(todos)] : [.text(text)])
+        )
         self.colorHex = colorHex
         self.isPinned = isPinned
         self.isCollapsed = isCollapsed
@@ -170,8 +204,9 @@ private final class StickyNote: ObservableObject, Codable, Identifiable {
         text = decodedText
         todos = decodedTodos
         isChecklist = decodedIsChecklist
-        blocks = try c.decodeIfPresent([NoteBlock].self, forKey: .blocks)
+        let decodedBlocks = try c.decodeIfPresent([NoteBlock].self, forKey: .blocks)
             ?? (decodedIsChecklist ? [NoteBlock.checklist(decodedTodos)] : [NoteBlock.text(decodedText)])
+        blocks = NoteBlock.normalized(decodedBlocks)
         colorHex = try c.decodeIfPresent(String.self, forKey: .colorHex) ?? PaletteColor.all[0].hex
         isPinned = try c.decodeIfPresent(Bool.self, forKey: .isPinned) ?? true
         isCollapsed = try c.decodeIfPresent(Bool.self, forKey: .isCollapsed) ?? false
@@ -216,6 +251,108 @@ private struct HeaderButtonStyle: ButtonStyle {
 }
 
 private final class NavigableTodoTextField: NSTextField {}
+
+private final class NavigableBlockTextField: NSTextField {}
+
+private struct BlockTextField: NSViewRepresentable {
+    @Binding var text: String
+    @Binding var focusedBlockID: UUID?
+    let blockID: UUID
+    let focusAtStart: Bool
+    let onSubmit: (Int) -> Void
+    let onMove: (Int) -> Void
+    let onBackspaceAtStart: () -> Void
+    let onFocused: () -> Void
+
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: BlockTextField
+
+        init(parent: BlockTextField) {
+            self.parent = parent
+        }
+
+        func controlTextDidBeginEditing(_ notification: Notification) {
+            parent.focusedBlockID = parent.blockID
+            parent.onFocused()
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSTextField else { return }
+            parent.text = field.stringValue
+        }
+
+        func control(_ control: NSControl, textView: NSTextView,
+                     doCommandBy commandSelector: Selector) -> Bool {
+            switch NSStringFromSelector(commandSelector) {
+            case "moveUp:":
+                parent.onMove(-1)
+                return true
+            case "moveDown:":
+                parent.onMove(1)
+                return true
+            case "insertNewline:", "insertNewlineIgnoringFieldEditor:":
+                parent.onSubmit(textView.selectedRange().location)
+                return true
+            case "deleteBackward:":
+                if textView.selectedRange().location == 0 {
+                    parent.onBackspaceAtStart()
+                    return true
+                }
+                return false
+            default:
+                return false
+            }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    func makeNSView(context: Context) -> NavigableBlockTextField {
+        let field = NavigableBlockTextField()
+        field.delegate = context.coordinator
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.placeholderString = "Type '/' for commands"
+        field.isEditable = true
+        field.isSelectable = true
+        field.maximumNumberOfLines = 1
+        field.lineBreakMode = .byTruncatingTail
+        field.cell?.isScrollable = true
+        field.cell?.usesSingleLineMode = true
+
+        let baseFont = NSFont.systemFont(ofSize: 16, weight: .medium)
+        if let rounded = baseFont.fontDescriptor.withDesign(.rounded),
+           let font = NSFont(descriptor: rounded, size: 16) {
+            field.font = font
+        } else {
+            field.font = baseFont
+        }
+        return field
+    }
+
+    func updateNSView(_ field: NavigableBlockTextField, context: Context) {
+        context.coordinator.parent = self
+        if field.stringValue != text {
+            field.stringValue = text
+        }
+        field.textColor = NSColor.black.withAlphaComponent(0.78)
+
+        if focusedBlockID == blockID, field.currentEditor() == nil {
+            let shouldFocusAtStart = focusAtStart
+            DispatchQueue.main.async { [weak field] in
+                guard let field, field.currentEditor() == nil else { return }
+                field.window?.makeFirstResponder(field)
+                if let editor = field.currentEditor() {
+                    editor.selectedRange = NSRange(
+                        location: shouldFocusAtStart ? 0 : field.stringValue.utf16.count,
+                        length: 0
+                    )
+                }
+            }
+        }
+    }
+}
 
 private struct TodoTextField: NSViewRepresentable {
     @Binding var text: String
@@ -321,7 +458,8 @@ private struct TodoTextField: NSViewRepresentable {
 
 private struct TodoRow: View {
     @Binding var item: TodoItem
-    @Binding var focusedItemID: UUID?
+    @Binding var focusedBlockID: UUID?
+    let blockID: UUID
     let onSubmit: () -> Void
     let onMove: (Int) -> Void
     let onRequestDelete: () -> Void
@@ -339,40 +477,32 @@ private struct TodoRow: View {
 
             TodoTextField(
                 text: $item.text,
-                focusedItemID: $focusedItemID,
-                itemID: item.id,
+                focusedItemID: $focusedBlockID,
+                itemID: blockID,
                 isDone: item.isDone,
                 onSubmit: onSubmit,
                 onToggleDone: { item.isDone.toggle() },
                 onMove: onMove,
                 onRequestDelete: onRequestDelete
             )
-
-            Button(action: onRequestDelete) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(Color.black.opacity(0.35))
-                    .frame(width: 20, height: 20)
-            }
-            .buttonStyle(.plain)
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, 2)
     }
 }
 
-private struct TodoDropDelegate: DropDelegate {
+private struct BlockDropDelegate: DropDelegate {
     let targetID: UUID
-    @Binding var items: [TodoItem]
+    @Binding var blocks: [NoteBlock]
     @Binding var draggedID: UUID?
 
     func dropEntered(info: DropInfo) {
         guard let draggedID,
               draggedID != targetID,
-              let sourceIndex = items.firstIndex(where: { $0.id == draggedID }),
-              let targetIndex = items.firstIndex(where: { $0.id == targetID }) else { return }
+              let sourceIndex = blocks.firstIndex(where: { $0.id == draggedID }),
+              let targetIndex = blocks.firstIndex(where: { $0.id == targetID }) else { return }
 
         withAnimation(.easeInOut(duration: 0.14)) {
-            items.move(
+            blocks.move(
                 fromOffsets: IndexSet(integer: sourceIndex),
                 toOffset: targetIndex > sourceIndex ? targetIndex + 1 : targetIndex
             )
@@ -391,9 +521,10 @@ private struct TodoDropDelegate: DropDelegate {
 
 private struct StickyNoteView: View {
     @ObservedObject var note: StickyNote
-    @State private var focusedTodoID: UUID?
+    @State private var focusedBlockID: UUID?
+    @State private var focusAtStartID: UUID?
     @State private var pendingDeleteID: UUID?
-    @State private var draggedTodoID: UUID?
+    @State private var draggedBlockID: UUID?
     let onNew: (Bool) -> Void
     let onClose: () -> Void
     let onStack: () -> Void
@@ -531,132 +662,141 @@ private struct StickyNoteView: View {
     private var content: some View {
         VStack(spacing: 0) {
             ScrollView {
-                LazyVStack(spacing: 10) {
+                LazyVStack(spacing: 1) {
                     ForEach($note.blocks) { $block in
                         blockView(block: $block)
                     }
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 9)
             }
 
-            Divider().overlay(Color.black.opacity(0.07))
+            HStack(spacing: 7) {
+                Menu {
+                    Button("Text") { appendBlock(kind: .text) }
+                    Button("To-do") { appendBlock(kind: .checklist) }
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .frame(width: 18)
 
-            HStack(spacing: 14) {
-                Button {
-                    note.blocks.append(.text())
-                } label: {
-                    Label("Text", systemImage: "text.alignleft")
-                }
-                Button {
-                    note.blocks.append(.checklist())
-                } label: {
-                    Label("Checklist", systemImage: "checklist")
-                }
+                Text("Type /todo, then press Return")
+                Spacer()
             }
             .buttonStyle(.plain)
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
-            .foregroundStyle(Color.black.opacity(0.5))
-            .padding(.vertical, 9)
+            .font(.system(size: 10, weight: .medium, design: .rounded))
+            .foregroundStyle(Color.black.opacity(0.34))
+            .padding(.horizontal, 14)
+            .padding(.bottom, 10)
         }
     }
 
     @ViewBuilder private func blockView(block: Binding<NoteBlock>) -> some View {
-        VStack(spacing: 5) {
-            HStack(spacing: 5) {
-                Image(systemName: block.wrappedValue.kind == .text ? "text.alignleft" : "checklist")
-                Text(block.wrappedValue.kind == .text ? "TEXT" : "CHECKLIST")
-                Spacer()
-                if note.blocks.count > 1 {
-                    Menu {
-                        Button("Remove section", role: .destructive) {
-                            removeBlock(id: block.wrappedValue.id)
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .frame(width: 22, height: 18)
-                    }
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
-                    .frame(width: 22)
-                }
-            }
-            .font(.system(size: 9, weight: .bold, design: .rounded))
-            .foregroundStyle(Color.black.opacity(0.32))
-            .padding(.horizontal, 9)
-            .padding(.top, 7)
-
+        Group {
             if block.wrappedValue.kind == .text {
-                TextEditor(text: block.text)
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.black.opacity(0.78))
-                    .scrollContentBackground(.hidden)
-                    .background(Color.clear)
-                    .frame(minHeight: 86)
-                    .padding(.horizontal, 5)
-                    .padding(.bottom, 5)
-            } else {
-                LazyVStack(spacing: 1) {
-                    ForEach(block.todos) { $item in
-                        TodoRow(
-                            item: $item,
-                            focusedItemID: $focusedTodoID,
-                            onSubmit: { insertTodo(in: block.wrappedValue.id, after: item.id) },
-                            onMove: { moveFocus(in: block.wrappedValue.id, from: item.id, by: $0) },
-                            onRequestDelete: { pendingDeleteID = item.id }
-                        )
-                        .contentShape(Rectangle())
-                        .onDrag {
-                            draggedTodoID = item.id
-                            return NSItemProvider(object: item.id.uuidString as NSString)
-                        }
-                        .onDrop(
-                            of: [UTType.text],
-                            delegate: TodoDropDelegate(
-                                targetID: item.id,
-                                items: block.todos,
-                                draggedID: $draggedTodoID
-                            )
-                        )
+                BlockTextField(
+                    text: block.text,
+                    focusedBlockID: $focusedBlockID,
+                    blockID: block.wrappedValue.id,
+                    focusAtStart: focusAtStartID == block.wrappedValue.id,
+                    onSubmit: { submitTextBlock(id: block.wrappedValue.id, cursor: $0) },
+                    onMove: { moveFocus(from: block.wrappedValue.id, by: $0) },
+                    onBackspaceAtStart: { backspaceAtStart(of: block.wrappedValue.id) },
+                    onFocused: {
+                        if focusAtStartID == block.wrappedValue.id { focusAtStartID = nil }
                     }
+                )
+                .frame(height: 27)
+                .padding(.horizontal, 6)
+            } else {
+                ForEach(block.todos) { $item in
+                    TodoRow(
+                        item: $item,
+                        focusedBlockID: $focusedBlockID,
+                        blockID: block.wrappedValue.id,
+                        onSubmit: { insertTodo(after: block.wrappedValue.id) },
+                        onMove: { moveFocus(from: block.wrappedValue.id, by: $0) },
+                        onRequestDelete: { pendingDeleteID = item.id }
+                    )
+                    .padding(.horizontal, 6)
                 }
-                .padding(.horizontal, 8)
-
-                Button {
-                    appendTodo(in: block.wrappedValue.id)
-                } label: {
-                    Label("Add item", systemImage: "plus.circle.fill")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color.black.opacity(0.46))
-                }
-                .buttonStyle(.plain)
-                .padding(.bottom, 9)
             }
         }
-        .background(Color.white.opacity(0.16))
-        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .contentShape(Rectangle())
+        .onDrag {
+            draggedBlockID = block.wrappedValue.id
+            return NSItemProvider(object: block.wrappedValue.id.uuidString as NSString)
+        }
+        .onDrop(
+            of: [UTType.text],
+            delegate: BlockDropDelegate(
+                targetID: block.wrappedValue.id,
+                blocks: $note.blocks,
+                draggedID: $draggedBlockID
+            )
+        )
+        .contextMenu {
+            if block.wrappedValue.kind == .text {
+                Button("Turn into to-do") { turnIntoTodo(id: block.wrappedValue.id) }
+            } else {
+                Button("Turn into text") { turnIntoText(id: block.wrappedValue.id) }
+            }
+            Divider()
+            Button("Delete block", role: .destructive) {
+                deleteBlock(id: block.wrappedValue.id)
+            }
+        }
     }
 
-    private func insertTodo(in blockID: UUID, after itemID: UUID) {
-        let newItem = TodoItem()
-        guard let blockIndex = note.blocks.firstIndex(where: { $0.id == blockID }) else { return }
-        if let index = note.blocks[blockIndex].todos.firstIndex(where: { $0.id == itemID }) {
-            note.blocks[blockIndex].todos.insert(newItem, at: index + 1)
-        } else {
-            note.blocks[blockIndex].todos.append(newItem)
-        }
+    private func appendBlock(kind: NoteBlockKind) {
+        let block = kind == .text ? NoteBlock.text() : NoteBlock.checklist()
+        note.blocks.append(block)
         DispatchQueue.main.async {
-            focusedTodoID = newItem.id
+            focusedBlockID = block.id
         }
     }
 
-    private func appendTodo(in blockID: UUID) {
-        guard let blockIndex = note.blocks.firstIndex(where: { $0.id == blockID }) else { return }
-        let newItem = TodoItem()
-        note.blocks[blockIndex].todos.append(newItem)
-        DispatchQueue.main.async {
-            focusedTodoID = newItem.id
+    private func submitTextBlock(id: UUID, cursor: Int) {
+        guard let index = note.blocks.firstIndex(where: { $0.id == id }) else { return }
+        let value = note.blocks[index].text
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let loweredValue = trimmedValue.lowercased()
+
+        if loweredValue == "/todo" || loweredValue == "/to-do" || loweredValue == "/checklist" {
+            note.blocks[index] = NoteBlock(id: id, kind: .checklist, todos: [TodoItem()])
+            focusedBlockID = id
+            return
         }
+
+        let commandPrefixes = ["/todo ", "/to-do ", "/checklist "]
+        if let prefix = commandPrefixes.first(where: { loweredValue.hasPrefix($0) }) {
+            let todoText = String(trimmedValue.dropFirst(prefix.count))
+            note.blocks[index] = NoteBlock(
+                id: id,
+                kind: .checklist,
+                todos: [TodoItem(text: todoText)]
+            )
+            focusedBlockID = id
+            return
+        }
+
+        let nsValue = value as NSString
+        let splitPoint = min(max(cursor, 0), nsValue.length)
+        note.blocks[index].text = nsValue.substring(to: splitPoint)
+        let next = NoteBlock.text(nsValue.substring(from: splitPoint))
+        note.blocks.insert(next, at: index + 1)
+        focusAtStartID = next.id
+        focusedBlockID = next.id
+    }
+
+    private func insertTodo(after blockID: UUID) {
+        guard let index = note.blocks.firstIndex(where: { $0.id == blockID }) else { return }
+        let next = NoteBlock.checklist()
+        note.blocks.insert(next, at: index + 1)
+        DispatchQueue.main.async { focusedBlockID = next.id }
     }
 
     private var deleteAlertIsPresented: Binding<Bool> {
@@ -668,11 +808,11 @@ private struct StickyNoteView: View {
         )
     }
 
-    private func moveFocus(in blockID: UUID, from itemID: UUID, by offset: Int) {
-        guard let block = note.blocks.first(where: { $0.id == blockID }),
-              let index = block.todos.firstIndex(where: { $0.id == itemID }) else { return }
-        let destination = min(max(index + offset, 0), block.todos.count - 1)
-        focusedTodoID = block.todos[destination].id
+    private func moveFocus(from blockID: UUID, by offset: Int) {
+        guard let index = note.blocks.firstIndex(where: { $0.id == blockID }) else { return }
+        let destination = min(max(index + offset, 0), note.blocks.count - 1)
+        focusAtStartID = nil
+        focusedBlockID = note.blocks[destination].id
     }
 
     private func confirmDelete() {
@@ -682,28 +822,66 @@ private struct StickyNoteView: View {
         }
         guard let blockIndex = note.blocks.firstIndex(where: { block in
             block.todos.contains(where: { $0.id == itemID })
-        }), let itemIndex = note.blocks[blockIndex].todos.firstIndex(where: { $0.id == itemID }) else {
+        }) else {
             pendingDeleteID = nil
             return
         }
 
-        note.blocks[blockIndex].todos.remove(at: itemIndex)
         pendingDeleteID = nil
+        deleteBlock(at: blockIndex)
+    }
 
-        guard !note.blocks[blockIndex].todos.isEmpty else {
-            focusedTodoID = nil
-            return
-        }
-        let nextIndex = min(itemIndex, note.blocks[blockIndex].todos.count - 1)
-        let nextID = note.blocks[blockIndex].todos[nextIndex].id
-        DispatchQueue.main.async {
-            focusedTodoID = nextID
+    private func backspaceAtStart(of blockID: UUID) {
+        guard let index = note.blocks.firstIndex(where: { $0.id == blockID }) else { return }
+        let currentText = note.blocks[index].text
+
+        if index > 0, note.blocks[index - 1].kind == .text, !currentText.isEmpty {
+            note.blocks[index - 1].text += currentText
+            let previousID = note.blocks[index - 1].id
+            note.blocks.remove(at: index)
+            focusAtStartID = nil
+            focusedBlockID = previousID
+        } else if currentText.isEmpty, note.blocks.count > 1 {
+            deleteBlock(at: index)
         }
     }
 
-    private func removeBlock(id: UUID) {
-        guard note.blocks.count > 1 else { return }
-        note.blocks.removeAll { $0.id == id }
+    private func turnIntoTodo(id: UUID) {
+        guard let index = note.blocks.firstIndex(where: { $0.id == id }) else { return }
+        let value = note.blocks[index].text
+        note.blocks[index] = NoteBlock(
+            id: id,
+            kind: .checklist,
+            todos: [TodoItem(text: value)]
+        )
+        focusedBlockID = id
+    }
+
+    private func turnIntoText(id: UUID) {
+        guard let index = note.blocks.firstIndex(where: { $0.id == id }) else { return }
+        let value = note.blocks[index].todos.first?.text ?? ""
+        note.blocks[index] = NoteBlock(id: id, kind: .text, text: value)
+        focusedBlockID = id
+    }
+
+    private func deleteBlock(id: UUID) {
+        guard let index = note.blocks.firstIndex(where: { $0.id == id }) else { return }
+        deleteBlock(at: index)
+    }
+
+    private func deleteBlock(at index: Int) {
+        if note.blocks.count == 1 {
+            let replacement = NoteBlock.text()
+            note.blocks = [replacement]
+            focusAtStartID = replacement.id
+            focusedBlockID = replacement.id
+            return
+        }
+
+        note.blocks.remove(at: index)
+        let destination = min(index, note.blocks.count - 1)
+        focusAtStartID = nil
+        focusedBlockID = note.blocks[destination].id
     }
 }
 
@@ -837,8 +1015,8 @@ private struct DashboardNoteRow: View {
     private var detail: String {
         let tasks = note.blocks.flatMap(\.todos)
         let completed = tasks.filter(\.isDone).count
-        if tasks.isEmpty { return "\(note.blocks.count) text section\(note.blocks.count == 1 ? "" : "s")" }
-        return "\(completed) of \(tasks.count) tasks completed • \(note.blocks.count) section\(note.blocks.count == 1 ? "" : "s")"
+        if tasks.isEmpty { return "\(note.blocks.count) text block\(note.blocks.count == 1 ? "" : "s")" }
+        return "\(completed) of \(tasks.count) tasks completed • \(note.blocks.count) block\(note.blocks.count == 1 ? "" : "s")"
     }
 
     private var noteIcon: String {
@@ -1027,7 +1205,7 @@ private final class NotesManager: ObservableObject {
         let activeCount = notes.filter { !$0.isDeleted }.count
         let offset = Double(activeCount % 8) * 20
         let note = StickyNote(
-            text: isChecklist ? "" : "Write something…",
+            text: "",
             todos: isChecklist ? [TodoItem()] : [],
             isChecklist: isChecklist,
             colorHex: PaletteColor.all[activeCount % PaletteColor.all.count].hex,

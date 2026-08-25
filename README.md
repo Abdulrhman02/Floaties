@@ -12,7 +12,7 @@ open build/Floaties.app
 ## Features
 
 - Native always-on-top macOS note windows
-- Mixed free-text and checklist sections in one note
+- Notion-style inline text and to-do blocks in one note
 - Drag-to-reorder checklist tasks
 - Keyboard navigation and task completion controls
 - Pin across Desktops or unpin to the current Desktop
@@ -50,7 +50,7 @@ The app stores note data in:
 - Drag the dotted header grip to move a note.
 - Drag the bottom-right diagonal grip to resize it.
 - Press and drag a checklist row to reorder it.
-- Use **Text** and **Checklist** at the bottom to add mixed sections.
+- Press `Return` to split text into blocks, or type `/todo` and press `Return` to create a to-do.
 - Open the dashboard from a note, the menu-bar item, or `Command-D`.
 
 ## Project layout

@@ -9,18 +9,19 @@ Floaties is a small native macOS application implemented in one Swift source fil
 | `AppDelegate` | Application lifecycle, menu-bar menu, sleep and power-off save hooks |
 | `NotesManager` | Note collection, windows, dashboard, persistence, stacking, restore, and deletion |
 | `StickyNote` | Observable and Codable note state |
-| `NoteBlock` / `TodoItem` | Mixed content sections and checklist rows |
+| `NoteBlock` / `TodoItem` | Flat inline document blocks and to-do state |
 | `NoteWindowController` | One `NSPanel` per note, frame capture, pinning, and collapsing |
 | `StickyNoteView` | Header, content blocks, task actions, and resize affordance |
 | `TodoTextField` | Native field-editor commands for arrows, Return, and deletion |
-| `TodoDropDelegate` | In-section checklist reordering |
+| `BlockTextField` | Native text-block splitting, merging, slash conversion, and navigation |
+| `BlockDropDelegate` | Reordering any block within the note |
 | `DashboardView` | Notes and Recently Deleted overview |
 
 ## Startup flow
 
 1. `AppDelegate` changes the app to accessory mode and creates the status item.
 2. `NotesManager` loads `notes.json`, falling back to `notes.backup.json` if necessary.
-3. Legacy notes without content blocks are migrated in memory.
+3. Legacy notes without content blocks are migrated in memory. Grouped checklist items and multiline text are normalized into individual inline blocks.
 4. A window is created for every non-deleted note.
 5. The loaded state is saved again so migrations become durable.
 
@@ -40,6 +41,12 @@ Floaties also flushes immediately when:
 Pinned notes use floating window level plus `canJoinAllSpaces`, `fullScreenAuxiliary`, and `stationary` collection behavior. Unpinned notes use normal level with managed Space behavior.
 
 Window movement is restricted to `WindowDragHandle`. Resizing is implemented by `WindowResizeNSView`, which keeps the top edge fixed while clamping the new size to the supported range.
+
+## Inline editor behavior
+
+`StickyNoteView` renders `note.blocks` as one flat `LazyVStack` without section containers. Each text block uses `BlockTextField`; each to-do block contains exactly one `TodoItem` rendered through `TodoTextField`. Both controls share a block-level focus identifier, so arrow navigation crosses block types.
+
+Return in a text field either executes a supported slash conversion or splits the string at the UTF-16 cursor position. Return at the end of a to-do inserts a new to-do block. `BlockDropDelegate` reorders the authoritative `blocks` array directly.
 
 ## Deletion lifecycle
 
