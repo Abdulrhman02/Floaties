@@ -4,6 +4,8 @@
 
 Each Floaties window is an independent sticky note. Its content behaves as one continuous, Notion-style document made from inline blocks. Text and to-dos remain freely mixable, while consecutive to-dos receive a subtle checklist section for cleaner visual structure.
 
+Each note also has an optional title fixed above the scrolling document. Leaving it empty has no effect; when present, the dashboard uses it as the note name.
+
 - A text block appears as a plain editable line.
 - A to-do block uses the same line layout with a checkbox.
 - Heading, bulleted-list, and quote blocks provide structure without creating separate note sections.
@@ -38,13 +40,15 @@ The dotted grip in the header is the only region that moves the window. This pre
 | Pin | Keeps the note above apps and visible across macOS Desktops/Spaces |
 | Unpin | Uses normal window layering and keeps the note on its current Desktop |
 | Palette | Selects one of the soft, saturated note colors |
-| Stack | Cascades all non-deleted notes near the top-right of the current screen |
-| Dashboard | Opens the Notes and Recently Deleted overview |
-| Plus | Creates a new note starting with text or a checklist |
+| Layered windows | Cascades all non-deleted notes into an offset stack near the top-right of the current screen |
+| Four-panel grid | Opens the Notes and Recently Deleted dashboard |
+| Document plus | Creates a new note starting with text or a checklist |
 | Chevron | Collapses or expands the note |
 | Close | Moves the note to Recently Deleted |
 
-Drag the diagonal grip at the bottom-right to resize a note. The supported size range is 280–520 points wide and 180–700 points tall. Position, size, and collapsed height persist between launches.
+All seven actions use the same circular background, size, and foreground treatment. Hovering any action shows a plain-language explanation, including **Cascade all notes on this screen** for the layered-window control.
+
+Drag the diagonal grip at the bottom-right to resize a note. The supported size range is 280–520 points wide and 180–700 points tall. Position, size, and collapsed height persist between launches. Collapse and expansion use one coordinated ease-in/ease-out frame animation while keeping the top edge anchored.
 
 ## Dashboard
 

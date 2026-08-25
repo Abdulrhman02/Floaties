@@ -13,14 +13,16 @@ This is the canonical maintenance guide for coding agents working in this reposi
 ## Product invariants
 
 - A note is one continuous, flat block document. Text, to-do, heading, bulleted-list, and quote blocks may appear in any order.
+- A note may have an optional persisted title fixed above its scrolling block document; the dashboard prefers it when present.
 - Consecutive to-do blocks are visually grouped into a checklist section for structure; this presentation must not merge or replace the underlying movable blocks.
 - `blocks` is authoritative persisted content; legacy top-level content fields exist only for migration compatibility.
 - Closing a note moves it to Recently Deleted. Only an explicit permanent-delete action destroys it.
 - Pinned means floating across Desktops/Spaces. Unpinned means normal layering on the current Desktop.
+- All seven header actions share the same circular chrome; menu-backed actions must not fall back to native unstyled labels.
 - The dotted header grip moves a note; the bottom-right grip resizes it; every block reveals a six-dot grip on hover that reorders without competing with text selection.
 - Empty blocks stay visually empty until focused. Only the focused empty editor may show a contextual placeholder.
 - To-do indentation is persisted per block. New Codable block fields must remain backward compatible.
-- Note content, completion state, deletion state, color, pin state, collapse state, position, and size must survive relaunch.
+- Note title, content, completion state, deletion state, color, pin state, collapse state, position, and size must survive relaunch.
 - Arabic and English input must remain valid Unicode throughout editing and persistence.
 
 ## Data safety

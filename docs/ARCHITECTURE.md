@@ -27,7 +27,7 @@ Floaties is a small native macOS application implemented in one Swift source fil
 
 ## Editing and persistence flow
 
-`StickyNote` publishes edits and calls its attached change closure. `NotesManager` debounces ordinary edits briefly, then encodes the complete note collection. Window move and resize delegate callbacks update the same model, so geometry follows the normal persistence path.
+`StickyNote` publishes title and document edits and calls its attached change closure. `NotesManager` debounces ordinary edits briefly, then encodes the complete note collection. Window move and resize delegate callbacks update the same model, so geometry follows the normal persistence path.
 
 Floaties also flushes immediately when:
 
@@ -42,9 +42,13 @@ Pinned notes use floating window level plus `canJoinAllSpaces`, `fullScreenAuxil
 
 Window movement is restricted to `WindowDragHandle`. Resizing is implemented by `WindowResizeNSView`, which keeps the top edge fixed while clamping the new size to the supported range.
 
+Collapse and expansion run through `NoteWindowController.setCollapsed`. Frame capture is suspended during one explicit `NSAnimationContext` animation, size constraints remain permissive until it completes, and content visibility changes before collapse or after expansion. This prevents AppKit constraints and SwiftUI layout from issuing competing size changes.
+
 ## Inline editor behavior
 
 `StickyNoteView` derives transient `BlockSection` runs from adjacent block kinds. Textual blocks—text, heading, bulleted list, and quote—stay visually lightweight; checklist runs receive one labeled card and item count. This grouping is presentation-only: each to-do remains its own authoritative `NoteBlock`, so focus, indentation, conversion, persistence, and cross-section drag reordering continue to operate at block granularity. Textual blocks share a style-aware `BlockTextField`; each to-do block contains exactly one `TodoItem` rendered through `TodoTextField`.
+
+The optional note title is outside the block array and fixed above the document `ScrollView`. Dashboard rows prefer a non-empty title and otherwise fall back to the first non-empty block, preserving useful names for older notes.
 
 Return in a text field either executes a supported slash conversion or splits the string at the UTF-16 cursor position. A leading slash in the focused text block reveals a compact light suggestion surface. Filtering is shared with Return handling, so Return selects the visibly highlighted first match. Ending field editing clears block focus, hides the chooser, and removes the contextual placeholder from empty blocks.
 

@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -210,6 +211,7 @@ private struct NoteBlock: Identifiable, Codable, Equatable {
 
 private final class StickyNote: ObservableObject, Codable, Identifiable {
     let id: UUID
+    @Published var title: String { didSet { changed() } }
     @Published var text: String { didSet { changed() } }
     @Published var todos: [TodoItem] { didSet { changed() } }
     @Published var isChecklist: Bool { didSet { changed() } }
@@ -226,13 +228,14 @@ private final class StickyNote: ObservableObject, Codable, Identifiable {
     var expandedHeight: Double { didSet { changed() } }
     var onChange: (() -> Void)?
 
-    init(id: UUID = UUID(), text: String = "", todos: [TodoItem] = [], isChecklist: Bool = false,
+    init(id: UUID = UUID(), title: String = "", text: String = "", todos: [TodoItem] = [], isChecklist: Bool = false,
          blocks: [NoteBlock]? = nil,
          colorHex: String = PaletteColor.all[0].hex, isPinned: Bool = true,
          isCollapsed: Bool = false, isDeleted: Bool = false, deletedAt: Date? = nil,
          x: Double, y: Double, width: Double = 320,
          height: Double = 300, expandedHeight: Double = 300) {
         self.id = id
+        self.title = title
         self.text = text
         self.todos = todos
         self.isChecklist = isChecklist
@@ -254,13 +257,14 @@ private final class StickyNote: ObservableObject, Codable, Identifiable {
     private func changed() { onChange?() }
 
     enum CodingKeys: String, CodingKey {
-        case id, text, todos, isChecklist, blocks, colorHex, isPinned, isCollapsed, isDeleted, deletedAt
+        case id, title, text, todos, isChecklist, blocks, colorHex, isPinned, isCollapsed, isDeleted, deletedAt
         case x, y, width, height, expandedHeight
     }
 
     required init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
+        title = try c.decodeIfPresent(String.self, forKey: .title) ?? ""
         let decodedText = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
         let decodedTodos = try c.decodeIfPresent([TodoItem].self, forKey: .todos) ?? []
         let decodedIsChecklist = try c.decodeIfPresent(Bool.self, forKey: .isChecklist) ?? false
@@ -285,6 +289,7 @@ private final class StickyNote: ObservableObject, Codable, Identifiable {
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
+        try c.encode(title, forKey: .title)
         try c.encode(text, forKey: .text)
         try c.encode(todos, forKey: .todos)
         try c.encode(isChecklist, forKey: .isChecklist)
@@ -321,8 +326,6 @@ private struct HeaderMenuLabel: View {
             .font(.system(size: 12, weight: .semibold, design: .rounded))
             .foregroundStyle(Color.black.opacity(0.62))
             .frame(width: 25, height: 25)
-            .background(Color.white.opacity(0.24))
-            .clipShape(Circle())
     }
 }
 
@@ -765,6 +768,7 @@ private struct StickyNoteView: View {
             if !note.isCollapsed {
                 Divider().overlay(Color.black.opacity(0.08))
                 content
+                    .transition(.opacity)
             }
         }
         .background(noteColor)
@@ -839,17 +843,19 @@ private struct StickyNoteView: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .tint(Color.black.opacity(0.62))
-            .frame(width: 25)
+            .frame(width: 25, height: 25)
+            .background(Color.white.opacity(0.24))
+            .clipShape(Circle())
             .help("Choose color")
 
             Button(action: onStack) {
-                Image(systemName: "square.stack.3d.up.fill")
+                Image(systemName: "rectangle.stack.fill")
             }
             .buttonStyle(HeaderButtonStyle())
-            .help("Stack all notes")
+            .help("Cascade all notes on this screen")
 
             Button(action: onDashboard) {
-                Image(systemName: "rectangle.grid.1x2.fill")
+                Image(systemName: "square.grid.2x2.fill")
             }
             .buttonStyle(HeaderButtonStyle())
             .help("Open notes dashboard")
@@ -858,13 +864,15 @@ private struct StickyNoteView: View {
                 Button("New note — start with text") { onNew(false) }
                 Button("New note — start with checklist") { onNew(true) }
             } label: {
-                HeaderMenuLabel(systemName: "plus")
+                HeaderMenuLabel(systemName: "doc.badge.plus")
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .tint(Color.black.opacity(0.62))
-            .frame(width: 25)
-            .help("New note")
+            .frame(width: 25, height: 25)
+            .background(Color.white.opacity(0.24))
+            .clipShape(Circle())
+            .help("Create a new note")
 
             Button(action: onToggleCollapse) {
                 Image(systemName: note.isCollapsed ? "chevron.down" : "chevron.up")
@@ -884,6 +892,25 @@ private struct StickyNoteView: View {
 
     private var content: some View {
         VStack(spacing: 0) {
+            ZStack(alignment: .leading) {
+                if note.title.isEmpty {
+                    Text("Add a title…")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.black.opacity(0.28))
+                        .allowsHitTesting(false)
+                }
+
+                TextField("", text: $note.title)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 19, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.black.opacity(0.78))
+                    .accessibilityLabel("Note title")
+            }
+            .padding(.leading, 24)
+            .padding(.trailing, 15)
+            .padding(.top, 11)
+            .padding(.bottom, 3)
+
             ScrollView {
                 LazyVStack(spacing: 8) {
                     ForEach(blockSections) { section in
@@ -1404,6 +1431,7 @@ private final class NoteWindowController: NSWindowController, NSWindowDelegate {
     let note: StickyNote
     weak var manager: NotesManager?
     private var frameUpdatesEnabled = false
+    private var isAnimatingCollapse = false
 
     init(note: StickyNote, manager: NotesManager) {
         self.note = note
@@ -1425,8 +1453,8 @@ private final class NoteWindowController: NSWindowController, NSWindowDelegate {
         panel.isOpaque = false
         panel.hasShadow = true
         panel.hidesOnDeactivate = false
-        panel.minSize = NSSize(width: 280, height: 180)
-        panel.maxSize = NSSize(width: 520, height: 700)
+        panel.minSize = NSSize(width: 280, height: note.isCollapsed ? 54 : 180)
+        panel.maxSize = NSSize(width: 520, height: note.isCollapsed ? 54 : 700)
         panel.collectionBehavior = note.isPinned
             ? [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
             : [.managed]
@@ -1478,24 +1506,57 @@ private final class NoteWindowController: NSWindowController, NSWindowDelegate {
         window.orderFrontRegardless()
     }
 
-    func applyCollapsedState() {
-        guard let window else { return }
-        var frame = window.frame
-        if note.isCollapsed {
-            note.expandedHeight = max(frame.height, 180)
-            let top = frame.maxY
-            frame.size.height = 54
-            frame.origin.y = top - 54
-            window.minSize = NSSize(width: 280, height: 54)
-            window.maxSize = NSSize(width: 520, height: 54)
+    func setCollapsed(_ collapsed: Bool) {
+        guard let window,
+              !isAnimatingCollapse,
+              collapsed != note.isCollapsed else { return }
+
+        isAnimatingCollapse = true
+        frameUpdatesEnabled = false
+
+        let currentFrame = window.frame
+        let top = currentFrame.maxY
+        var targetFrame = currentFrame
+
+        if collapsed {
+            note.height = max(currentFrame.height, 180)
+            note.expandedHeight = note.height
+            targetFrame.size.height = 54
+            withAnimation(.easeOut(duration: 0.12)) {
+                note.isCollapsed = true
+            }
         } else {
-            let top = frame.maxY
-            frame.size.height = max(note.expandedHeight, 180)
-            frame.origin.y = top - frame.height
-            window.minSize = NSSize(width: 280, height: 180)
-            window.maxSize = NSSize(width: 520, height: 700)
+            targetFrame.size.height = max(note.expandedHeight, 180)
         }
-        window.setFrame(frame, display: true, animate: true)
+        targetFrame.origin.y = top - targetFrame.height
+
+        // Keep permissive limits during the animation so AppKit does not snap
+        // the frame before the animator receives its target.
+        window.minSize = NSSize(width: 280, height: 54)
+        window.maxSize = NSSize(width: 520, height: 700)
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.20
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            window.animator().setFrame(targetFrame, display: true)
+        } completionHandler: { [weak self, weak window] in
+            DispatchQueue.main.async {
+                guard let self, let window else { return }
+                if collapsed {
+                    window.minSize = NSSize(width: 280, height: 54)
+                    window.maxSize = NSSize(width: 520, height: 54)
+                } else {
+                    window.minSize = NSSize(width: 280, height: 180)
+                    window.maxSize = NSSize(width: 520, height: 700)
+                    withAnimation(.easeIn(duration: 0.12)) {
+                        self.note.isCollapsed = false
+                    }
+                }
+                self.frameUpdatesEnabled = true
+                self.captureFrame()
+                self.isAnimatingCollapse = false
+            }
+        }
     }
 }
 
@@ -1507,6 +1568,9 @@ private struct DashboardNoteRow: View {
     let onDeleteForever: () -> Void
 
     private var title: String {
+        let noteTitle = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !noteTitle.isEmpty { return noteTitle }
+
         for block in note.blocks {
             if block.kind.isTextual {
                 let trimmed = block.text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1795,8 +1859,7 @@ private final class NotesManager: ObservableObject {
 
     func toggleCollapse(id: UUID) {
         guard let note = notes.first(where: { $0.id == id }) else { return }
-        note.isCollapsed.toggle()
-        controllers[id]?.applyCollapsedState()
+        controllers[id]?.setCollapsed(!note.isCollapsed)
     }
 
     func stackNotes() {

@@ -19,6 +19,7 @@ The root value is an array of notes. The following abbreviated example uses inve
 [
   {
     "id": "00000000-0000-0000-0000-000000000000",
+    "title": "Release plan",
     "blocks": [
       {
         "id": "11111111-1111-1111-1111-111111111111",
@@ -59,6 +60,7 @@ The root value is an array of notes. The following abbreviated example uses inve
 ## Authoritative fields
 
 - `blocks` is the authoritative note content.
+- `title` is an optional user-facing note name stored as a string independently from `blocks`. An empty string means no title.
 - Textual blocks use their `text` field. Supported persisted kinds are `"text"`, `"heading"`, `"bullet"`, and `"quote"`.
 - A to-do block uses `kind: "checklist"` and contains exactly one entry in its `todos` array. The persisted case name remains `checklist` for compatibility.
 - `indentLevel` stores checklist nesting from `0` through `4`. Missing, negative, or oversized values decode safely and are clamped into that range.
@@ -69,7 +71,9 @@ The top-level `text`, `todos`, and `isChecklist` fields remain encoded for compa
 
 ## Compatibility rules
 
-Decoding supplies defaults for fields added after the first version. If `blocks` is absent, Floaties creates one block from the legacy content:
+Decoding supplies defaults for fields added after the first version. If `title` is absent, it decodes as an empty string so every existing save remains valid.
+
+If `blocks` is absent, Floaties creates one block from the legacy content:
 
 - `isChecklist == true` becomes one checklist block using `todos`.
 - Otherwise, it becomes one text block using `text`.

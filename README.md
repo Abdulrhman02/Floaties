@@ -1,6 +1,6 @@
 # Floaties
 
-Floaties is a lightweight native macOS sticky-note utility that lives in the menu bar. Notes can float above other apps, follow you across Desktops, mix free-text and checklist sections, and be restored after deletion.
+Floaties is a lightweight native macOS sticky-note utility that lives in the menu bar. Notes can have optional titles, float above other apps, follow you across Desktops, mix free-text and checklist sections, and be restored after deletion.
 
 ## Quick start
 
