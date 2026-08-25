@@ -24,12 +24,14 @@ The root value is an array of notes. The following abbreviated example uses inve
         "id": "11111111-1111-1111-1111-111111111111",
         "kind": "text",
         "text": "Release notes",
-        "todos": []
+        "todos": [],
+        "indentLevel": 0
       },
       {
         "id": "22222222-2222-2222-2222-222222222222",
         "kind": "checklist",
         "text": "",
+        "indentLevel": 1,
         "todos": [
           {
             "id": "33333333-3333-3333-3333-333333333333",
@@ -59,6 +61,7 @@ The root value is an array of notes. The following abbreviated example uses inve
 - `blocks` is the authoritative note content.
 - A text block uses `kind: "text"` and its `text` field.
 - A to-do block uses `kind: "checklist"` and contains exactly one entry in its `todos` array. The persisted case name remains `checklist` for compatibility.
+- `indentLevel` stores checklist nesting from `0` through `4`. Missing, negative, or oversized values decode safely and are clamped into that range.
 - Todo identifiers are globally unique within the app, which allows focus and delete actions to locate an item across blocks.
 - `x`, `y`, `width`, `height`, and `expandedHeight` preserve window geometry.
 
@@ -76,6 +79,7 @@ After decoding, `NoteBlock.normalized` converts older grouped content into the f
 - A checklist block containing multiple items becomes one checklist block per item.
 - A multiline text block becomes one text block per line.
 - Identifiers and content are preserved where possible; an empty document receives one empty text block.
+- Older blocks without `indentLevel` decode at level `0`; normalization preserves indentation when it expands older grouped or multiline blocks.
 
 When adding a persisted field:
 

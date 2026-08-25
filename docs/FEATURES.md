@@ -2,24 +2,27 @@
 
 ## Notes
 
-Each Floaties window is an independent sticky note. Its content behaves as one continuous, Notion-style document made from inline blocks. Text and to-dos are peers rather than separate cards or sections.
+Each Floaties window is an independent sticky note. Its content behaves as one continuous, Notion-style document made from inline blocks. Text and to-dos remain freely mixable, while consecutive to-dos receive a subtle checklist section for cleaner visual structure.
 
 - A text block appears as a plain editable line.
 - A to-do block uses the same line layout with a checkbox.
+- Adjacent to-dos share a labeled checklist card with an item count and an **Add item** control; text breaks the card and resumes the document flow.
 - Blocks can be mixed and reordered in any sequence.
-- Press and drag anywhere on a block to reorder it.
+- Hover a block and drag its six-dot grip to reorder it. The separate grip keeps clicking and dragging inside text available for selection.
 
-Press `Return` in text to split the current block at the cursor. Type `/todo`, `/to-do`, or `/checklist` and press `Return` to turn a text block into a to-do. The small `+` menu at the bottom can append either type without a command.
+Press `Return` in text to split the current block at the cursor. Type `/` at the start of an empty text block to open the block chooser, then select **Text** or **To-do**. The typed shortcuts `/todo`, `/to-do`, `/checklist`, and `/text` also work with `Return`. The small `+` menu at the bottom can append either type without a command.
 
 Right-click a block to convert its type or delete it. Backspace at the beginning of a text block merges it into the previous text block; Backspace on an empty text block removes it.
 
 ## Checklist controls
 
 - Click the circle to check or uncheck an item.
-- Press and drag a to-do block to reorder it anywhere in the note.
+- Hover and drag the six-dot grip to reorder a to-do anywhere in the note.
 - Press `↑` or `↓` while editing to focus the previous or next block, including text.
-- Press `Return` with the cursor at the end of the text to create the next item.
-- Press `Return` with the cursor before the end to check or uncheck the current item.
+- Press `Return` to split a to-do at the cursor and continue in a new to-do.
+- Press `Return` on an empty to-do to turn it into normal text and leave the checklist.
+- Press `Shift-Return` from any to-do to insert a normal text block underneath it.
+- Press `Tab` to indent a to-do beneath the previous to-do, up to four levels. Press `Shift-Tab` to outdent it.
 - Backspace and Forward Delete remove characters normally. When an item is already empty, deletion opens a confirmation dialog.
 - In a deletion dialog, `Return` confirms and `Escape` cancels.
 
@@ -60,6 +63,8 @@ Open the dashboard from a note, from the menu-bar item, or with `Command-D` whil
 - Quit Floaties
 
 Floaties uses `LSUIElement`, so it stays out of the Dock.
+
+All controls and empty-field placeholders use dark or gray foregrounds across the current light note palette for consistent contrast.
 
 ## Language support
 

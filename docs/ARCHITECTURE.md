@@ -12,8 +12,8 @@ Floaties is a small native macOS application implemented in one Swift source fil
 | `NoteBlock` / `TodoItem` | Flat inline document blocks and to-do state |
 | `NoteWindowController` | One `NSPanel` per note, frame capture, pinning, and collapsing |
 | `StickyNoteView` | Header, content blocks, task actions, and resize affordance |
-| `TodoTextField` | Native field-editor commands for arrows, Return, and deletion |
-| `BlockTextField` | Native text-block splitting, merging, slash conversion, and navigation |
+| `TodoTextField` | Native field-editor commands for arrows, modified Return, indentation, and deletion |
+| `BlockTextField` | Native text-block splitting, merging, slash commands, and navigation |
 | `BlockDropDelegate` | Reordering any block within the note |
 | `DashboardView` | Notes and Recently Deleted overview |
 
@@ -44,9 +44,13 @@ Window movement is restricted to `WindowDragHandle`. Resizing is implemented by 
 
 ## Inline editor behavior
 
-`StickyNoteView` renders `note.blocks` as one flat `LazyVStack` without section containers. Each text block uses `BlockTextField`; each to-do block contains exactly one `TodoItem` rendered through `TodoTextField`. Both controls share a block-level focus identifier, so arrow navigation crosses block types.
+`StickyNoteView` derives transient `BlockSection` runs from adjacent block kinds. Text runs stay visually lightweight; checklist runs receive one labeled card and item count. This grouping is presentation-only: each to-do remains its own authoritative `NoteBlock`, so focus, indentation, conversion, persistence, and cross-section drag reordering continue to operate at block granularity. Each text block uses `BlockTextField`; each to-do block contains exactly one `TodoItem` rendered through `TodoTextField`.
 
-Return in a text field either executes a supported slash conversion or splits the string at the UTF-16 cursor position. Return at the end of a to-do inserts a new to-do block. `BlockDropDelegate` reorders the authoritative `blocks` array directly.
+Return in a text field either executes a supported slash conversion or splits the string at the UTF-16 cursor position. A leading slash also reveals an inline chooser for the supported Text and To-do block types.
+
+Return in a to-do splits the item at the UTF-16 cursor position; an empty item becomes text. Shift-Return inserts a text block after the item. Tab and Shift-Tab change the persisted `indentLevel`, constrained to four levels and requiring a preceding to-do before indentation. Both native fields intercept Up and Down to move focus across block types.
+
+Reordering starts only from the six-dot hover grip. `BlockDropDelegate` then moves the authoritative `blocks` array directly, leaving normal field selection gestures untouched.
 
 ## Deletion lifecycle
 
