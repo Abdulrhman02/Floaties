@@ -21,6 +21,7 @@ This is the canonical maintenance guide for coding agents working in this reposi
 - Closing a note moves it to Recently Deleted. Only an explicit permanent-delete action destroys it.
 - Pinned means floating across Desktops/Spaces. Unpinned means normal layering on the current Desktop.
 - All six header actions share the same circular chrome; menu-backed actions must not fall back to native unstyled labels. Do not reintroduce the removed cascade/stack control as a substitute for collapse.
+- New note is one direct action that creates an empty text note. Checklist creation belongs inside the block editor, not in a new-note chooser.
 - The dotted header grip moves a note; the bottom-right grip resizes it; every block reveals a six-dot grip on hover that reorders without competing with text selection.
 - Empty blocks stay visually empty until focused. Only the focused empty editor may show a contextual placeholder.
 - While the slash chooser is visible, Up and Down navigate its filtered suggestions and Return applies the highlighted row; otherwise Up and Down retain cross-block navigation.

@@ -12,6 +12,7 @@ All notable changes to Floaties are recorded here.
 ### Changed
 
 - Reduced inactive rendering and redundant disk work by ending editor focus on deactivation, extending the edit-save debounce, and ignoring unchanged window geometry.
+- Simplified every new-note entry point to one immediate action that starts with an empty text block; checklist blocks remain available inside the editor.
 
 ### Removed
 

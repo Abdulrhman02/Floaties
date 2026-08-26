@@ -763,7 +763,7 @@ private struct StickyNoteView: View {
     @State private var draggedBlockID: UUID?
     @State private var hoveredBlockID: UUID?
     @State private var selectedSlashIndex = 0
-    let onNew: (Bool) -> Void
+    let onNew: () -> Void
     let onClose: () -> Void
     let onDashboard: () -> Void
     let onTogglePin: () -> Void
@@ -894,18 +894,10 @@ private struct StickyNoteView: View {
             .buttonStyle(HeaderButtonStyle())
             .help("Open notes dashboard")
 
-            Menu {
-                Button("New note — start with text") { onNew(false) }
-                Button("New note — start with checklist") { onNew(true) }
-            } label: {
-                HeaderMenuLabel(systemName: "doc.badge.plus")
+            Button(action: onNew) {
+                Image(systemName: "doc.badge.plus")
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .tint(Color.black.opacity(0.62))
-            .frame(width: 25, height: 25)
-            .background(Color.white.opacity(0.24))
-            .clipShape(Circle())
+            .buttonStyle(HeaderButtonStyle())
             .help("Create a new note")
 
             Button(action: onToggleCollapse) {
@@ -1593,7 +1585,7 @@ private final class NoteWindowController: NSWindowController, NSWindowDelegate {
 
         let view = StickyNoteView(
             note: note,
-            onNew: { [weak manager] isChecklist in manager?.addNote(isChecklist: isChecklist) },
+            onNew: { [weak manager] in manager?.addNote() },
             onClose: { [weak manager] in manager?.deleteNote(id: note.id) },
             onDashboard: { [weak manager] in manager?.openDashboard() },
             onTogglePin: { [weak manager] in manager?.togglePin(id: note.id) },
@@ -1805,13 +1797,12 @@ private struct DashboardView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Menu {
-                    Button("Start with text") { manager.addNote(isChecklist: false) }
-                    Button("Start with checklist") { manager.addNote(isChecklist: true) }
+                Button {
+                    manager.addNote()
                 } label: {
                     Label("New note", systemImage: "plus")
                 }
-                .menuStyle(.borderlessButton)
+                .buttonStyle(.bordered)
             }
 
             Picker("Notes", selection: $selection) {
@@ -1894,23 +1885,20 @@ private final class NotesManager: ObservableObject {
 
     func start() {
         if notes.isEmpty {
-            addNote(isChecklist: false)
+            addNote()
         } else {
             notes.filter { !$0.isDeleted }.forEach(showWindow)
             scheduleSave()
         }
     }
 
-    func addNote(isChecklist: Bool) {
+    func addNote() {
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1200, height: 800)
         let width = 320.0
         let height = 300.0
         let activeCount = notes.filter { !$0.isDeleted }.count
         let offset = Double(activeCount % 8) * 20
         let note = StickyNote(
-            text: "",
-            todos: isChecklist ? [TodoItem()] : [],
-            isChecklist: isChecklist,
             colorHex: PaletteColor.all[activeCount % PaletteColor.all.count].hex,
             x: screen.maxX - width - 28 - offset,
             y: screen.maxY - height - 28 - offset,
@@ -2107,10 +2095,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.toolTip = "Floaties"
 
         let menu = NSMenu()
-        menu.addItem(item("New text note", action: #selector(newTextNote), key: "n"))
-        let checklist = item("New checklist", action: #selector(newChecklist), key: "N")
-        checklist.keyEquivalentModifierMask = [.command, .shift]
-        menu.addItem(checklist)
+        menu.addItem(item("New note", action: #selector(newNote), key: "n"))
         menu.addItem(.separator())
         menu.addItem(item("Notes Dashboard", action: #selector(openDashboard), key: "d"))
         menu.addItem(.separator())
@@ -2129,8 +2114,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
-    @objc private func newTextNote() { manager.addNote(isChecklist: false) }
-    @objc private func newChecklist() { manager.addNote(isChecklist: true) }
+    @objc private func newNote() { manager.addNote() }
     @objc private func openDashboard() { manager.openDashboard() }
     @objc private func toggleNotes() { manager.toggleVisibility() }
     @objc private func bringForward() { manager.bringForward() }

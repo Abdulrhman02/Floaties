@@ -44,7 +44,7 @@ The optional title field shares the header with the controls. It uses the availa
 | Unpin | Uses normal window layering and keeps the note on its current Desktop |
 | Palette | Selects one of the soft, saturated note colors |
 | Four-panel grid | Opens the Notes and Recently Deleted dashboard |
-| Document plus | Creates a new note starting with text or a checklist |
+| Document plus | Immediately creates a new note with one empty text block |
 | Chevron | Collapses or expands the note |
 | Close | Moves the note to Recently Deleted |
 
@@ -63,8 +63,7 @@ Open the dashboard from a note, from the menu-bar item, or with `Command-D` whil
 
 ## Menu-bar commands
 
-- New note starting with text
-- New note starting with a checklist
+- New note
 - Open the dashboard
 - Show or hide all note windows
 - Bring note windows forward
