@@ -20,13 +20,16 @@ Read `AGENT.md` before acting. It contains the product invariants, data-safety r
 - Preserve the optional title independently from blocks, render it in the persistent header so it remains visible when collapsed, and prefer it in dashboard summaries when non-empty.
 - Keep deletion recoverable until the user explicitly chooses permanent deletion.
 - Keep real note content out of test output and fixtures.
-- Preserve the flat Notion-style block model: text, one-item to-do, heading, bulleted-list, and quote blocks; persisted indentation; and a focus-bound slash chooser. Consecutive to-dos receive one visual checklist section without changing the persisted block structure.
+- Preserve the flat Notion-style block model: text, one-item to-do, heading, bulleted-list, quote, and divider blocks; persisted indentation and checklist collapse state; and a focus-bound slash chooser. Consecutive to-dos receive one visual checklist section without changing the persisted block structure.
+- Keep checklist collapse anchored to the first block in its visual run, clear an editor focus hidden by collapse, and never discard hidden items.
+- Keep dividers draggable and persisted but non-editable; focus navigation skips them and insertion supplies a following editable text block.
 - Preserve the gesture split: header grip moves the window, bottom-right grip resizes it, and each block reveals its six-dot reorder grip only on hover without intercepting text selection.
 - Keep instructional placeholders contextual: empty unfocused blocks must remain visually empty.
 - Route Up and Down through the filtered slash chooser while it is visible, and apply its highlighted result on Return; outside that state, keep cross-block arrow navigation.
 - Keep pinned and unpinned Space behavior distinct.
 - Keep all seven header actions visually consistent, including the menu-backed palette and new-note actions.
 - Treat the current target as macOS-only. Do not publish a Windows artifact until a real platform port passes behavior and persistence parity checks.
+- Preserve low idle cost: no polling or network work, end field editing on app deactivation, debounce ordinary saves, and keep lifecycle flushes immediate.
 
 ## Finish the whole change
 

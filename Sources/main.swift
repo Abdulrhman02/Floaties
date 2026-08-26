@@ -100,8 +100,14 @@ private enum NoteBlockKind: String, Codable, Hashable {
     case heading
     case bullet
     case quote
+    case divider
 
-    var isTextual: Bool { self != .checklist }
+    var isTextual: Bool {
+        switch self {
+        case .text, .heading, .bullet, .quote: return true
+        case .checklist, .divider: return false
+        }
+    }
 
     var displayName: String {
         switch self {
@@ -110,6 +116,7 @@ private enum NoteBlockKind: String, Codable, Hashable {
         case .heading: return "Heading"
         case .bullet: return "Bulleted list"
         case .quote: return "Quote"
+        case .divider: return "Divider"
         }
     }
 
@@ -120,6 +127,7 @@ private enum NoteBlockKind: String, Codable, Hashable {
         case .heading: return "textformat.size.larger"
         case .bullet: return "list.bullet"
         case .quote: return "text.quote"
+        case .divider: return "minus"
         }
     }
 }
@@ -130,18 +138,21 @@ private struct NoteBlock: Identifiable, Codable, Equatable {
     var text = ""
     var todos: [TodoItem] = []
     var indentLevel = 0
+    var isSectionCollapsed = false
 
     init(id: UUID = UUID(), kind: NoteBlockKind, text: String = "",
-         todos: [TodoItem] = [], indentLevel: Int = 0) {
+         todos: [TodoItem] = [], indentLevel: Int = 0,
+         isSectionCollapsed: Bool = false) {
         self.id = id
         self.kind = kind
         self.text = text
         self.todos = todos
         self.indentLevel = min(max(indentLevel, 0), 4)
+        self.isSectionCollapsed = isSectionCollapsed
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, kind, text, todos, indentLevel
+        case id, kind, text, todos, indentLevel, isSectionCollapsed
     }
 
     init(from decoder: Decoder) throws {
@@ -151,6 +162,7 @@ private struct NoteBlock: Identifiable, Codable, Equatable {
         text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
         todos = try c.decodeIfPresent([TodoItem].self, forKey: .todos) ?? []
         indentLevel = min(max(try c.decodeIfPresent(Int.self, forKey: .indentLevel) ?? 0, 0), 4)
+        isSectionCollapsed = try c.decodeIfPresent(Bool.self, forKey: .isSectionCollapsed) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -160,6 +172,9 @@ private struct NoteBlock: Identifiable, Codable, Equatable {
         try c.encode(text, forKey: .text)
         try c.encode(todos, forKey: .todos)
         try c.encode(indentLevel, forKey: .indentLevel)
+        if isSectionCollapsed {
+            try c.encode(true, forKey: .isSectionCollapsed)
+        }
     }
 
     static func text(_ value: String = "") -> NoteBlock {
@@ -199,9 +214,12 @@ private struct NoteBlock: Identifiable, Codable, Equatable {
                         id: index == 0 ? block.id : item.id,
                         kind: .checklist,
                         todos: [item],
-                        indentLevel: block.indentLevel
+                        indentLevel: block.indentLevel,
+                        isSectionCollapsed: index == 0 && block.isSectionCollapsed
                     ))
                 }
+            case .divider:
+                result.append(NoteBlock(id: block.id, kind: .divider))
             }
         }
 
@@ -414,7 +432,7 @@ private struct BlockTextField: NSViewRepresentable {
         case .heading: return "Heading"
         case .bullet: return "List item"
         case .quote: return "Quote"
-        case .checklist: return ""
+        case .checklist, .divider: return ""
         }
     }
 
@@ -943,6 +961,7 @@ private struct StickyNoteView: View {
                     Button("Heading") { appendBlock(kind: .heading) }
                     Button("Bulleted list") { appendBlock(kind: .bullet) }
                     Button("Quote") { appendBlock(kind: .quote) }
+                    Button("Divider") { appendBlock(kind: .divider) }
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 13, weight: .semibold))
@@ -965,39 +984,52 @@ private struct StickyNoteView: View {
     }
 
     private func checklistSection(_ section: BlockSection) -> some View {
-        VStack(spacing: 2) {
-            HStack(spacing: 5) {
-                Image(systemName: "checklist")
-                Text("CHECKLIST")
-                Spacer()
-                Text("\(section.blockIDs.count)")
+        let isCollapsed = sectionIsCollapsed(section)
+
+        return VStack(spacing: 2) {
+            Button {
+                toggleChecklistSection(section)
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                        .frame(width: 9)
+                    Image(systemName: "checklist")
+                    Text("CHECKLIST")
+                    Spacer()
+                    Text("\(section.blockIDs.count)")
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             .font(.system(size: 9, weight: .bold, design: .rounded))
             .foregroundStyle(Color.black.opacity(0.34))
             .padding(.horizontal, 10)
             .padding(.top, 8)
-            .padding(.bottom, 2)
+            .padding(.bottom, isCollapsed ? 8 : 2)
+            .help(isCollapsed ? "Expand checklist" : "Collapse checklist")
 
-            ForEach(section.blockIDs, id: \.self) { blockID in
-                if let block = binding(for: blockID) {
-                    blockView(block: block)
+            if !isCollapsed {
+                ForEach(section.blockIDs, id: \.self) { blockID in
+                    if let block = binding(for: blockID) {
+                        blockView(block: block)
+                    }
                 }
-            }
 
-            Button {
-                if let lastID = section.blockIDs.last {
-                    appendTodo(after: lastID)
+                Button {
+                    if let lastID = section.blockIDs.last {
+                        appendTodo(after: lastID)
+                    }
+                } label: {
+                    Label("Add item", systemImage: "plus.circle.fill")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.black.opacity(0.44))
                 }
-            } label: {
-                Label("Add item", systemImage: "plus.circle.fill")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.black.opacity(0.44))
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 27)
+                .padding(.top, 2)
+                .padding(.bottom, 9)
             }
-            .buttonStyle(.plain)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 27)
-            .padding(.top, 2)
-            .padding(.bottom, 9)
         }
         .background(Color.white.opacity(0.17))
         .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
@@ -1005,6 +1037,24 @@ private struct StickyNoteView: View {
             RoundedRectangle(cornerRadius: 11, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
         }
+        .animation(.easeInOut(duration: 0.16), value: isCollapsed)
+    }
+
+    private func sectionIsCollapsed(_ section: BlockSection) -> Bool {
+        guard let anchorID = section.blockIDs.first,
+              let anchor = note.blocks.first(where: { $0.id == anchorID }) else { return false }
+        return anchor.isSectionCollapsed
+    }
+
+    private func toggleChecklistSection(_ section: BlockSection) {
+        guard let anchorID = section.blockIDs.first,
+              let index = note.blocks.firstIndex(where: { $0.id == anchorID }) else { return }
+        let willCollapse = !note.blocks[index].isSectionCollapsed
+        if willCollapse, let focusedBlockID, section.blockIDs.contains(focusedBlockID) {
+            self.focusedBlockID = nil
+            focusAtStartID = nil
+        }
+        note.blocks[index].isSectionCollapsed = willCollapse
     }
 
     private func binding(for blockID: UUID) -> Binding<NoteBlock>? {
@@ -1038,7 +1088,14 @@ private struct StickyNoteView: View {
                     .help("Drag to reorder")
 
                 Group {
-                    if block.wrappedValue.kind.isTextual {
+                    if block.wrappedValue.kind == .divider {
+                        Rectangle()
+                            .fill(Color.black.opacity(0.22))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 1)
+                            .padding(.vertical, 11)
+                            .accessibilityLabel("Divider")
+                    } else if block.wrappedValue.kind.isTextual {
                         HStack(spacing: 7) {
                             if block.wrappedValue.kind == .bullet {
                                 Circle()
@@ -1188,7 +1245,8 @@ private struct StickyNoteView: View {
             SlashSuggestion(kind: .checklist, detail: "Track something to finish", command: "/todo"),
             SlashSuggestion(kind: .heading, detail: "A section title", command: "/heading"),
             SlashSuggestion(kind: .bullet, detail: "A simple bulleted item", command: "/bullet"),
-            SlashSuggestion(kind: .quote, detail: "Emphasize a passage", command: "/quote")
+            SlashSuggestion(kind: .quote, detail: "Emphasize a passage", command: "/quote"),
+            SlashSuggestion(kind: .divider, detail: "Separate sections", command: "/divider")
         ]
     }
 
@@ -1231,19 +1289,39 @@ private struct StickyNoteView: View {
         guard let index = note.blocks.firstIndex(where: { $0.id == blockID }) else { return }
         if kind == .checklist {
             note.blocks[index] = NoteBlock(id: blockID, kind: .checklist, todos: [TodoItem()])
+        } else if kind == .divider {
+            note.blocks[index] = NoteBlock(id: blockID, kind: .divider)
+            let next = NoteBlock.text()
+            note.blocks.insert(next, at: index + 1)
+            focusAtStartID = next.id
+            focusedBlockID = next.id
         } else {
             note.blocks[index] = NoteBlock(id: blockID, kind: kind)
+            focusAtStartID = blockID
+            focusedBlockID = blockID
         }
         selectedSlashIndex = 0
-        focusAtStartID = blockID
-        focusedBlockID = blockID
     }
 
     private func appendBlock(kind: NoteBlockKind) {
-        let block = kind == .checklist ? NoteBlock.checklist() : NoteBlock.textual(kind: kind)
+        let block: NoteBlock
+        if kind == .checklist {
+            block = NoteBlock.checklist()
+        } else if kind == .divider {
+            block = NoteBlock(kind: .divider)
+        } else {
+            block = NoteBlock.textual(kind: kind)
+        }
         note.blocks.append(block)
+        let focusBlock: NoteBlock
+        if kind == .divider {
+            focusBlock = NoteBlock.text()
+            note.blocks.append(focusBlock)
+        } else {
+            focusBlock = block
+        }
         DispatchQueue.main.async {
-            focusedBlockID = block.id
+            focusedBlockID = focusBlock.id
         }
     }
 
@@ -1267,7 +1345,8 @@ private struct StickyNoteView: View {
             ("/checklist", .checklist),
             ("/heading", .heading),
             ("/bullet", .bullet),
-            ("/quote", .quote)
+            ("/quote", .quote),
+            ("/divider", .divider)
         ]
         for (command, kind) in commands {
             if loweredValue == command {
@@ -1277,10 +1356,23 @@ private struct StickyNoteView: View {
             let prefix = command + " "
             if loweredValue.hasPrefix(prefix) {
                 let commandText = String(trimmedValue.dropFirst(prefix.count))
-                note.blocks[index] = kind == .checklist
-                    ? NoteBlock(id: id, kind: .checklist, todos: [TodoItem(text: commandText)])
-                    : NoteBlock(id: id, kind: kind, text: commandText)
-                focusedBlockID = id
+                if kind == .checklist {
+                    note.blocks[index] = NoteBlock(
+                        id: id,
+                        kind: .checklist,
+                        todos: [TodoItem(text: commandText)]
+                    )
+                    focusedBlockID = id
+                } else if kind == .divider {
+                    note.blocks[index] = NoteBlock(id: id, kind: .divider)
+                    let next = NoteBlock.text(commandText)
+                    note.blocks.insert(next, at: index + 1)
+                    focusAtStartID = next.id
+                    focusedBlockID = next.id
+                } else {
+                    note.blocks[index] = NoteBlock(id: id, kind: kind, text: commandText)
+                    focusedBlockID = id
+                }
                 return
             }
         }
@@ -1374,7 +1466,12 @@ private struct StickyNoteView: View {
 
     private func moveFocus(from blockID: UUID, by offset: Int) {
         guard let index = note.blocks.firstIndex(where: { $0.id == blockID }) else { return }
-        let destination = min(max(index + offset, 0), note.blocks.count - 1)
+        var destination = index + offset
+        while note.blocks.indices.contains(destination),
+              note.blocks[destination].kind == .divider {
+            destination += offset
+        }
+        guard note.blocks.indices.contains(destination) else { return }
         focusAtStartID = nil
         focusedBlockID = note.blocks[destination].id
     }
@@ -1522,13 +1619,19 @@ private final class NoteWindowController: NSWindowController, NSWindowDelegate {
 
     private func captureFrame() {
         guard frameUpdatesEnabled, let frame = window?.frame else { return }
-        note.x = frame.origin.x
-        note.y = frame.origin.y
-        note.width = frame.width
+        if abs(note.x - frame.origin.x) > 0.25 { note.x = frame.origin.x }
+        if abs(note.y - frame.origin.y) > 0.25 { note.y = frame.origin.y }
+        if abs(note.width - frame.width) > 0.25 { note.width = frame.width }
         if !note.isCollapsed {
-            note.height = frame.height
-            note.expandedHeight = frame.height
+            if abs(note.height - frame.height) > 0.25 { note.height = frame.height }
+            if abs(note.expandedHeight - frame.height) > 0.25 {
+                note.expandedHeight = frame.height
+            }
         }
+    }
+
+    func endEditing() {
+        window?.makeFirstResponder(nil)
     }
 
     func applyPinState() {
@@ -1928,6 +2031,11 @@ private final class NotesManager: ObservableObject {
         controllers.values.forEach { $0.window?.orderFrontRegardless() }
     }
 
+    func endEditing() {
+        controllers.values.forEach { $0.endEditing() }
+        dashboardController?.window?.makeFirstResponder(nil)
+    }
+
     func saveNow() {
         saveWorkItem?.cancel()
         do {
@@ -1957,7 +2065,7 @@ private final class NotesManager: ObservableObject {
         saveWorkItem?.cancel()
         let work = DispatchWorkItem { [weak self] in self?.saveNow() }
         saveWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: work)
     }
 
     private func load() {
@@ -1993,6 +2101,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidResignActive(_ notification: Notification) {
+        manager.endEditing()
         manager.saveNow()
     }
 

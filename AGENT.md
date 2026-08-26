@@ -13,9 +13,10 @@ This is the canonical maintenance guide for coding agents working in this reposi
 
 ## Product invariants
 
-- A note is one continuous, flat block document. Text, to-do, heading, bulleted-list, and quote blocks may appear in any order.
+- A note is one continuous, flat block document. Text, to-do, heading, bulleted-list, quote, and divider blocks may appear in any order.
 - A note may have an optional persisted title in the window header; it remains visible when collapsed, and the dashboard prefers it when present.
 - Consecutive to-do blocks are visually grouped into a checklist section for structure; this presentation must not merge or replace the underlying movable blocks.
+- The first to-do block anchors a checklist section's persisted collapse state. Collapsing must hide editors without deleting or merging their blocks.
 - `blocks` is authoritative persisted content; legacy top-level content fields exist only for migration compatibility.
 - Closing a note moves it to Recently Deleted. Only an explicit permanent-delete action destroys it.
 - Pinned means floating across Desktops/Spaces. Unpinned means normal layering on the current Desktop.
@@ -24,6 +25,8 @@ This is the canonical maintenance guide for coding agents working in this reposi
 - Empty blocks stay visually empty until focused. Only the focused empty editor may show a contextual placeholder.
 - While the slash chooser is visible, Up and Down navigate its filtered suggestions and Return applies the highlighted row; otherwise Up and Down retain cross-block navigation.
 - To-do indentation is persisted per block. New Codable block fields must remain backward compatible.
+- Dividers remain full draggable blocks but have no editor; keyboard focus must skip them and insertion must leave an editable text destination.
+- Inactive windows must end field editing, ordinary saves remain debounced, and idle behavior must not introduce polling or network work.
 - Note title, content, completion state, deletion state, color, pin state, collapse state, position, and size must survive relaunch.
 - Arabic and English input must remain valid Unicode throughout editing and persistence.
 

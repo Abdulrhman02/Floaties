@@ -33,6 +33,7 @@ The root value is an array of notes. The following abbreviated example uses inve
         "kind": "checklist",
         "text": "",
         "indentLevel": 1,
+        "isSectionCollapsed": true,
         "todos": [
           {
             "id": "33333333-3333-3333-3333-333333333333",
@@ -62,7 +63,9 @@ The root value is an array of notes. The following abbreviated example uses inve
 - `blocks` is the authoritative note content.
 - `title` is an optional user-facing note name stored as a string independently from `blocks`. An empty string means no title; the UI renders it in the persistent top bar so it survives collapse visually as well as in storage.
 - Textual blocks use their `text` field. Supported persisted kinds are `"text"`, `"heading"`, `"bullet"`, and `"quote"`.
+- Divider blocks use `kind: "divider"` and carry no editable text or to-do content.
 - A to-do block uses `kind: "checklist"` and contains exactly one entry in its `todos` array. The persisted case name remains `checklist` for compatibility.
+- `isSectionCollapsed` is meaningful on the first block in a consecutive checklist run. Missing values decode as `false`, so older checklist sections remain expanded.
 - `indentLevel` stores checklist nesting from `0` through `4`. Missing, negative, or oversized values decode safely and are clamped into that range.
 - Todo identifiers are globally unique within the app, which allows focus and delete actions to locate an item across blocks.
 - `x`, `y`, `width`, `height`, and `expandedHeight` preserve window geometry.
@@ -84,6 +87,7 @@ After decoding, `NoteBlock.normalized` converts older grouped content into the f
 - A multiline textual block becomes one block of the same kind per line.
 - Identifiers and content are preserved where possible; an empty document receives one empty text block.
 - Older blocks without `indentLevel` decode at level `0`; normalization preserves indentation when it expands older grouped or multiline blocks.
+- Older blocks without `isSectionCollapsed` decode as expanded. When an older grouped checklist is normalized, collapse state remains on its first generated block.
 
 When adding a persisted field:
 

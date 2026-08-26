@@ -16,13 +16,15 @@ open build/Floaties.app
 ## Features
 
 - Native always-on-top macOS note windows
-- Notion-style text, to-do, heading, bulleted-list, and quote blocks in one note
+- Notion-style text, to-do, heading, bulleted-list, quote, and divider blocks in one note
+- Collapsible checklist sections with persisted expansion state
 - Compact slash suggestion picker and hover-only drag grips
 - Keyboard navigation and task completion controls
 - Pin across Desktops or unpin to the current Desktop
 - Multiple colors, stacking, collapsing, and resizing
 - Notes dashboard with Recently Deleted and restore
 - Atomic local persistence with a backup save
+- Native idle behavior with no network access or background polling
 - Unicode text support, including Arabic and English
 
 ## Documentation

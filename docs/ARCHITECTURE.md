@@ -27,7 +27,7 @@ Floaties is a small native macOS application implemented in one Swift source fil
 
 ## Editing and persistence flow
 
-`StickyNote` publishes title and document edits and calls its attached change closure. `NotesManager` debounces ordinary edits briefly, then encodes the complete note collection. Window move and resize delegate callbacks update the same model, so geometry follows the normal persistence path.
+`StickyNote` publishes title and document edits and calls its attached change closure. `NotesManager` debounces ordinary edits for 450 milliseconds, then encodes the complete note collection. Window move and resize delegate callbacks update the same model, so geometry follows the normal persistence path; sub-point frame changes are ignored to avoid redundant model notifications.
 
 Floaties also flushes immediately when:
 
@@ -35,6 +35,8 @@ Floaties also flushes immediately when:
 - The application terminates
 - macOS is about to sleep
 - macOS is about to power off
+
+When the app resigns active status, each note and dashboard window also ends field editing before the flush. This stops inactive insertion-cursor animation and avoids continuing SwiftUI/AppKit redraw work in the background.
 
 ## Window and Space behavior
 
@@ -46,7 +48,9 @@ Collapse and expansion run through `NoteWindowController.setCollapsed`. Frame ca
 
 ## Inline editor behavior
 
-`StickyNoteView` derives transient `BlockSection` runs from adjacent block kinds. Textual blocks—text, heading, bulleted list, and quote—stay visually lightweight; checklist runs receive one labeled card and item count. This grouping is presentation-only: each to-do remains its own authoritative `NoteBlock`, so focus, indentation, conversion, persistence, and cross-section drag reordering continue to operate at block granularity. Textual blocks share a style-aware `BlockTextField`; each to-do block contains exactly one `TodoItem` rendered through `TodoTextField`.
+`StickyNoteView` derives transient `BlockSection` runs from adjacent block kinds. Textual blocks—text, heading, bulleted list, and quote—stay visually lightweight; dividers render as draggable horizontal rules; checklist runs receive one labeled card and item count. This grouping is presentation-only: each to-do remains its own authoritative `NoteBlock`, so focus, indentation, conversion, persistence, and cross-section drag reordering continue to operate at block granularity. Textual blocks share a style-aware `BlockTextField`; each to-do block contains exactly one `TodoItem` rendered through `TodoTextField`.
+
+A checklist section uses its first to-do block as the stable collapse anchor. Toggling the section changes that block's persisted `isSectionCollapsed` flag. Collapsing removes its item editors and add control from the view hierarchy and clears focus if it was inside the section; expanding reconstructs the existing blocks without changing their content.
 
 The optional note title is outside the block array and rendered in the persistent window header, so collapsing the content does not hide it. Dashboard rows prefer a non-empty title and otherwise fall back to the first non-empty block, preserving useful names for older notes.
 
@@ -55,6 +59,8 @@ Return in a text field either executes a supported slash conversion or splits th
 Return in a to-do splits the item at the UTF-16 cursor position; an empty item becomes text. Shift-Return inserts a text block after the item. Tab and Shift-Tab change the persisted `indentLevel`, constrained to four levels and requiring a preceding to-do before indentation. Both native fields intercept Up and Down to move focus across block types.
 
 Reordering starts only from the six-dot grip, which occupies a stable gutter but remains transparent until its row is hovered. `BlockDropDelegate` then moves the authoritative `blocks` array directly, leaving normal field selection gestures untouched.
+
+Divider blocks participate in the same drag, drop, context-menu, deletion, and persistence flows. Keyboard focus navigation skips dividers because they have no text editor. Slash or add-menu insertion also creates a following text block so focus always has an editable destination.
 
 ## Deletion lifecycle
 

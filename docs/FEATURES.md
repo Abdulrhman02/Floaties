@@ -8,12 +8,12 @@ Each note also has an optional title in its top bar. It stays visible when the n
 
 - A text block appears as a plain editable line.
 - A to-do block uses the same line layout with a checkbox.
-- Heading, bulleted-list, and quote blocks provide structure without creating separate note sections.
-- Adjacent to-dos share a labeled checklist card with an item count and an **Add item** control; text breaks the card and resumes the document flow.
+- Heading, bulleted-list, quote, and divider blocks provide structure without creating separate note sections.
+- Adjacent to-dos share a labeled checklist card with an item count and an **Add item** control; text or a divider breaks the card and resumes the document flow.
 - Blocks can be mixed and reordered in any sequence.
 - Hover a block to reveal its six-dot grip, then drag the grip to reorder the block. The reserved gutter prevents layout movement, while the separate grip keeps text selection working normally.
 
-Press `Return` in text to split the current block at the cursor. Type `/` at the start of a focused text block to open a compact suggestion picker for **Text**, **To-do**, **Heading**, **Bulleted list**, and **Quote**. Keep typing to filter it, use `↑` and `↓` to move the highlight, and press `Return` to apply the selected result. The highlight wraps at the first and last result and also follows the hovered row. The typed shortcuts `/text`, `/todo`, `/heading`, `/bullet`, and `/quote` work directly. The small `+` menu at the bottom offers the same block types.
+Press `Return` in text to split the current block at the cursor. Type `/` at the start of a focused text block to open a compact suggestion picker for **Text**, **To-do**, **Heading**, **Bulleted list**, **Quote**, and **Divider**. Keep typing to filter it, use `↑` and `↓` to move the highlight, and press `Return` to apply the selected result. The highlight wraps at the first and last result and also follows the hovered row. The typed shortcuts `/text`, `/todo`, `/heading`, `/bullet`, `/quote`, and `/divider` work directly. Creating a divider also creates and focuses an empty text block beneath it. The small `+` menu at the bottom offers the same block types.
 
 Empty lines have no repeated default label. The contextual placeholder appears only while its empty field is focused and disappears when focus moves elsewhere.
 
@@ -21,6 +21,7 @@ Right-click a block to convert its type or delete it. Backspace at the beginning
 
 ## Checklist controls
 
+- Click the chevron in a checklist header to collapse or expand the whole checklist section. Its state persists across launches.
 - Click the circle to check or uncheck an item.
 - Hover a to-do and drag the revealed six-dot grip to reorder it anywhere in the note.
 - Press `↑` or `↓` while editing to focus the previous or next block, including text.
@@ -74,6 +75,10 @@ Open the dashboard from a note, from the menu-bar item, or with `Command-D` whil
 Floaties uses `LSUIElement`, so it stays out of the Dock.
 
 All controls and empty-field placeholders use dark or gray foregrounds across the current light note palette for consistent contrast.
+
+## Resource behavior
+
+Floaties has no network client or background polling loop. Ordinary edits use a short save debounce, while application deactivation, sleep, power-off, and termination still flush immediately. Leaving Floaties ends active text editing so an inactive insertion cursor does not keep its SwiftUI window repainting.
 
 ## Language support
 

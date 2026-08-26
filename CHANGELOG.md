@@ -4,7 +4,14 @@ All notable changes to Floaties are recorded here.
 
 ## Unreleased
 
-_No unreleased changes._
+### Added
+
+- Collapsible checklist sections with persisted expansion state.
+- Draggable divider blocks available from `/divider` and the add-block menu.
+
+### Changed
+
+- Reduced inactive rendering and redundant disk work by ending editor focus on deactivation, extending the edit-save debounce, and ignoring unchanged window geometry.
 
 ## 1.1.0 - 2026-08-26
 
