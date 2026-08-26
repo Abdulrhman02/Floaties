@@ -13,6 +13,10 @@ All notable changes to Floaties are recorded here.
 
 - Reduced inactive rendering and redundant disk work by ending editor focus on deactivation, extending the edit-save debounce, and ignoring unchanged window geometry.
 
+### Removed
+
+- Removed the ambiguous cascade/stack control from note headers and the menu bar; it rearranged windows but looked like a bulk-collapse action.
+
 ## 1.1.0 - 2026-08-26
 
 ### Added

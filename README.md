@@ -21,7 +21,7 @@ open build/Floaties.app
 - Compact slash suggestion picker and hover-only drag grips
 - Keyboard navigation and task completion controls
 - Pin across Desktops or unpin to the current Desktop
-- Multiple colors, stacking, collapsing, and resizing
+- Multiple colors, collapsing, and resizing
 - Notes dashboard with Recently Deleted and restore
 - Atomic local persistence with a backup save
 - Native idle behavior with no network access or background polling

@@ -43,13 +43,12 @@ The optional title field shares the header with the controls. It uses the availa
 | Pin | Keeps the note above apps and visible across macOS Desktops/Spaces |
 | Unpin | Uses normal window layering and keeps the note on its current Desktop |
 | Palette | Selects one of the soft, saturated note colors |
-| Layered windows | Cascades all non-deleted notes into an offset stack near the top-right of the current screen |
 | Four-panel grid | Opens the Notes and Recently Deleted dashboard |
 | Document plus | Creates a new note starting with text or a checklist |
 | Chevron | Collapses or expands the note |
 | Close | Moves the note to Recently Deleted |
 
-All seven actions use the same circular background, size, and foreground treatment. Hovering any action shows a plain-language explanation, including **Cascade all notes on this screen** for the layered-window control.
+All six actions use the same circular background, size, and foreground treatment. The removed layered-windows control no longer competes with note collapse or suggests a misleading bulk-collapse behavior.
 
 Drag the diagonal grip at the bottom-right to resize a note. The supported size range is 280–520 points wide and 180–700 points tall. Position, size, and collapsed height persist between launches. Collapse and expansion use one coordinated ease-in/ease-out frame animation while keeping the top edge anchored.
 
@@ -67,7 +66,6 @@ Open the dashboard from a note, from the menu-bar item, or with `Command-D` whil
 - New note starting with text
 - New note starting with a checklist
 - Open the dashboard
-- Stack notes
 - Show or hide all note windows
 - Bring note windows forward
 - Quit Floaties

@@ -27,7 +27,7 @@ Read `AGENT.md` before acting. It contains the product invariants, data-safety r
 - Keep instructional placeholders contextual: empty unfocused blocks must remain visually empty.
 - Route Up and Down through the filtered slash chooser while it is visible, and apply its highlighted result on Return; outside that state, keep cross-block arrow navigation.
 - Keep pinned and unpinned Space behavior distinct.
-- Keep all seven header actions visually consistent, including the menu-backed palette and new-note actions.
+- Keep all six header actions visually consistent, including the menu-backed palette and new-note actions. The removed cascade/stack action must not return as a misleading collapse control.
 - Treat the current target as macOS-only. Do not publish a Windows artifact until a real platform port passes behavior and persistence parity checks.
 - Preserve low idle cost: no polling or network work, end field editing on app deactivation, debounce ordinary saves, and keep lifecycle flushes immediate.
 

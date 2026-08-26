@@ -765,7 +765,6 @@ private struct StickyNoteView: View {
     @State private var selectedSlashIndex = 0
     let onNew: (Bool) -> Void
     let onClose: () -> Void
-    let onStack: () -> Void
     let onDashboard: () -> Void
     let onTogglePin: () -> Void
     let onToggleCollapse: () -> Void
@@ -888,12 +887,6 @@ private struct StickyNoteView: View {
             .background(Color.white.opacity(0.24))
             .clipShape(Circle())
             .help("Choose color")
-
-            Button(action: onStack) {
-                Image(systemName: "rectangle.stack.fill")
-            }
-            .buttonStyle(HeaderButtonStyle())
-            .help("Cascade all notes on this screen")
 
             Button(action: onDashboard) {
                 Image(systemName: "square.grid.2x2.fill")
@@ -1602,7 +1595,6 @@ private final class NoteWindowController: NSWindowController, NSWindowDelegate {
             note: note,
             onNew: { [weak manager] isChecklist in manager?.addNote(isChecklist: isChecklist) },
             onClose: { [weak manager] in manager?.deleteNote(id: note.id) },
-            onStack: { [weak manager] in manager?.stackNotes() },
             onDashboard: { [weak manager] in manager?.openDashboard() },
             onTogglePin: { [weak manager] in manager?.togglePin(id: note.id) },
             onToggleCollapse: { [weak manager] in manager?.toggleCollapse(id: note.id) }
@@ -1999,22 +1991,6 @@ private final class NotesManager: ObservableObject {
         controllers[id]?.setCollapsed(!note.isCollapsed)
     }
 
-    func stackNotes() {
-        let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1200, height: 800)
-        let baseWidth = controllers.values.compactMap { $0.window?.frame.width }.max() ?? 320
-        for (index, note) in notes.filter({ !$0.isDeleted }).enumerated() {
-            guard let window = controllers[note.id]?.window else { continue }
-            let step = CGFloat(index % 9) * 16
-            var frame = window.frame
-            frame.origin.x = screen.maxX - baseWidth - 28 - step
-            frame.origin.y = screen.maxY - frame.height - 28 - step
-            window.setFrame(frame, display: true, animate: true)
-            window.orderFrontRegardless()
-        }
-        hidden = false
-        scheduleSave()
-    }
-
     func toggleVisibility() {
         hidden.toggle()
         for controller in controllers.values {
@@ -2138,7 +2114,6 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(item("Notes Dashboard", action: #selector(openDashboard), key: "d"))
         menu.addItem(.separator())
-        menu.addItem(item("Stack notes", action: #selector(stackNotes), key: "s", modifiers: [.command, .shift]))
         menu.addItem(item("Show or hide notes", action: #selector(toggleNotes), key: "h", modifiers: [.command, .shift]))
         menu.addItem(item("Bring notes forward", action: #selector(bringForward), key: "f", modifiers: [.command, .shift]))
         menu.addItem(.separator())
@@ -2157,7 +2132,6 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func newTextNote() { manager.addNote(isChecklist: false) }
     @objc private func newChecklist() { manager.addNote(isChecklist: true) }
     @objc private func openDashboard() { manager.openDashboard() }
-    @objc private func stackNotes() { manager.stackNotes() }
     @objc private func toggleNotes() { manager.toggleVisibility() }
     @objc private func bringForward() { manager.bringForward() }
     @objc private func quit() { NSApp.terminate(nil) }

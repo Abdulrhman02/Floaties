@@ -7,7 +7,7 @@ Floaties is a small native macOS application implemented in one Swift source fil
 | Component | Responsibility |
 | --- | --- |
 | `AppDelegate` | Application lifecycle, menu-bar menu, sleep and power-off save hooks |
-| `NotesManager` | Note collection, windows, dashboard, persistence, stacking, restore, and deletion |
+| `NotesManager` | Note collection, windows, dashboard, persistence, restore, and deletion |
 | `StickyNote` | Observable and Codable note state |
 | `NoteBlock` / `TodoItem` | Flat inline document blocks and to-do state |
 | `NoteWindowController` | One `NSPanel` per note, frame capture, pinning, and collapsing |

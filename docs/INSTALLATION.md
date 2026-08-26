@@ -23,7 +23,7 @@ A real Windows release requires a platform port, not a packaging conversion. The
 - Mixed text and checklist block editing
 - Keyboard command routing and drag reordering
 - JSON persistence and migration compatibility
-- Dashboard, Recently Deleted, stacking, collapse, and resize behavior
+- Dashboard, Recently Deleted, collapse, and resize behavior
 - MSIX or signed installer generation on a Windows build runner
 
 Publishing a renamed or empty `.exe` would be misleading, so release automation must not attach a Windows artifact until that port passes parity and persistence tests.
