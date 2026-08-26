@@ -1,0 +1,4 @@
+interface:
+  display_name: "Floaties Maintainer"
+  short_description: "Maintain Floaties code and docs safely"
+  default_prompt: "Use $floaties-maintainer to implement this Floaties change and update the affected documentation."

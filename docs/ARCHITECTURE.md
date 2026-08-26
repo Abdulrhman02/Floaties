@@ -1,0 +1,77 @@
+# Architecture
+
+Floaties is a small native macOS application implemented in one Swift source file. SwiftUI renders note and dashboard content; AppKit owns windows, menu-bar integration, and native text-field behavior.
+
+## Component map
+
+| Component | Responsibility |
+| --- | --- |
+| `AppDelegate` | Application lifecycle, menu-bar menu, sleep and power-off save hooks |
+| `NotesManager` | Note collection, windows, dashboard, persistence, restore, and deletion |
+| `StickyNote` | Observable and Codable note state |
+| `NoteBlock` / `TodoItem` | Flat inline document blocks and to-do state |
+| `NoteWindowController` | One `NSPanel` per note, frame capture, pinning, and collapsing |
+| `StickyNoteView` | Header, content blocks, task actions, and resize affordance |
+| `TodoTextField` | Native field-editor commands for arrows, modified Return, indentation, and deletion |
+| `BlockTextField` | Native text-block splitting, merging, slash commands, and navigation |
+| `BlockDropDelegate` | Reordering any block within the note |
+| `DashboardView` | Notes and Recently Deleted overview |
+
+## Startup flow
+
+1. `AppDelegate` changes the app to accessory mode and creates the status item.
+2. `NotesManager` loads `notes.json`, falling back to `notes.backup.json` if necessary.
+3. Legacy notes without content blocks are migrated in memory. Grouped checklist items and multiline text are normalized into individual inline blocks.
+4. A window is created for every non-deleted note.
+5. The loaded state is saved again so migrations become durable.
+
+## Editing and persistence flow
+
+`StickyNote` publishes title and document edits and calls its attached change closure. `NotesManager` debounces ordinary edits for 450 milliseconds, then encodes the complete note collection. Window move and resize delegate callbacks update the same model, so geometry follows the normal persistence path; sub-point frame changes are ignored to avoid redundant model notifications.
+
+Floaties also flushes immediately when:
+
+- The app resigns active status
+- The application terminates
+- macOS is about to sleep
+- macOS is about to power off
+
+When the app resigns active status, each note and dashboard window also ends field editing before the flush. This stops inactive insertion-cursor animation and avoids continuing SwiftUI/AppKit redraw work in the background.
+
+## Window and Space behavior
+
+Pinned notes use floating window level plus `canJoinAllSpaces`, `fullScreenAuxiliary`, and `stationary` collection behavior. Unpinned notes use normal level with managed Space behavior.
+
+Window movement is restricted to `WindowDragHandle`. Resizing is implemented by `WindowResizeNSView`, which keeps the top edge fixed while clamping the new size to the supported range.
+
+Collapse and expansion run through `NoteWindowController.setCollapsed`. Frame capture is suspended during one explicit `NSAnimationContext` animation, size constraints remain permissive until it completes, and content visibility changes before collapse or after expansion. This prevents AppKit constraints and SwiftUI layout from issuing competing size changes.
+
+## Inline editor behavior
+
+`StickyNoteView` derives transient `BlockSection` runs from adjacent block kinds. Textual blocks—text, heading, bulleted list, and quote—stay visually lightweight; dividers render as draggable horizontal rules; checklist runs receive one labeled card and item count. This grouping is presentation-only: each to-do remains its own authoritative `NoteBlock`, so focus, indentation, conversion, persistence, and cross-section drag reordering continue to operate at block granularity. Textual blocks share a style-aware `BlockTextField`; each to-do block contains exactly one `TodoItem` rendered through `TodoTextField`.
+
+A checklist section uses its first to-do block as the stable collapse anchor. Toggling the section changes that block's persisted `isSectionCollapsed` flag. Collapsing removes its item editors and add control from the view hierarchy and clears focus if it was inside the section; expanding reconstructs the existing blocks without changing their content.
+
+The optional note title is outside the block array and rendered in the persistent window header, so collapsing the content does not hide it. Dashboard rows prefer a non-empty title and otherwise fall back to the first non-empty block, preserving useful names for older notes.
+
+Return in a text field either executes a supported slash conversion or splits the string at the UTF-16 cursor position. A leading slash in the focused text block reveals a compact light suggestion surface. `selectedSlashIndex` tracks keyboard or hover selection within the filtered results. While the chooser is active, Up and Down wrap that selection instead of moving block focus, and Return applies the same visible selection. Ending field editing clears block focus, hides the chooser, and removes the contextual placeholder from empty blocks.
+
+Return in a to-do splits the item at the UTF-16 cursor position; an empty item becomes text. Shift-Return inserts a text block after the item. Tab and Shift-Tab change the persisted `indentLevel`, constrained to four levels and requiring a preceding to-do before indentation. Both native fields intercept Up and Down to move focus across block types.
+
+Reordering starts only from the six-dot grip, which occupies a stable gutter but remains transparent until its row is hovered. `BlockDropDelegate` then moves the authoritative `blocks` array directly, leaving normal field selection gestures untouched.
+
+Divider blocks participate in the same drag, drop, context-menu, deletion, and persistence flows. Keyboard focus navigation skips dividers because they have no text editor. Slash or add-menu insertion also creates a following text block so focus always has an editable destination.
+
+## Deletion lifecycle
+
+The close button is an archive action, not destruction:
+
+1. The note window closes.
+2. `isDeleted` becomes `true` and `deletedAt` is recorded.
+3. The note remains in the persisted collection and appears in Recently Deleted.
+4. Restore clears the deletion fields and recreates its window.
+5. Only **Delete Forever** removes the model from the collection.
+
+## Source organization
+
+The app currently remains single-file because its model, UI, and controllers are compact and tightly related. If the source becomes difficult to navigate, split by responsibility without changing behavior and update this document and `build.sh` together.
